@@ -19,6 +19,7 @@
 %   obj.coef
 %   obj.spin_label
 %   obj.disp 
+%   obj.coherence
 % ------------------------------------------------------------------------
 % properties (Access = protected)
 % ------------------------------------------------------------------------
@@ -142,6 +143,10 @@ classdef PO
     
     properties (Constant = true)
         sqn = sym(1/2);% Spin Quantum Number
+
+     %   url = 'https://github.com/ohgo1977/ProductOperator';
+     %   version = '0.0.0';% Major.Minor.Patch
+
     end
         
     methods
