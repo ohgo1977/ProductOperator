@@ -938,7 +938,35 @@ classdef PO
         % id_in is a vector including id numbers for the terms to be deleted.
         % These number can be obtained by dispPO(obj).
 
-            if isa(id_in,'cell')
+            id_in = obj.findterm(id_in);
+            obj.axis(id_in,:) = [];
+            obj.coef(id_in,:) = [];
+            obj = CombPO(obj);
+        end % delPO
+
+       %% obj = selPO(obj,id_in)
+       function obj = selPO(obj,id_in)
+        % obj = selPO(obj,id_in)
+        % rho = selPO(rho,[1 2])
+        % rho = selPO(rho,{'Ix'})
+        % rho = selPO(rho,{'IzSz'})
+        % rho = selPO(rho,{'Ix' 'IzSz'})
+        % rho = selPO(rho,{'IxS*'})
+        % rho = selPO(rho,{'I*S*' 'I*S*K*'})
+        % Selete particular terms in obj.
+        % id_in is a vector including id numbers for the terms to be seleted.
+        % These number can be obtained by dispPO(obj).
+
+            id_in = obj.findterm(id_in);
+            obj.axis = obj.axis(id_in,:);
+            obj.coef = obj.coef(id_in,:);
+
+            obj = CombPO(obj);
+        end % selPO
+
+        %% id_out = findterm(obj,id_in)
+        function id_out = findterm(obj,id_in)
+            if isa(id_in,'cell') % case of cell
                 spin_label_cell = obj.spin_label;
                 spin_no = size(obj.axis,2);
                 sp_cell = id_in;
@@ -953,21 +981,21 @@ classdef PO
                         spin_label_tmp = spin_label_cell{jj};
                         if contains(sp,spin_label_tmp)
                             id_tmp = jj;
-                            phase_s = sp(strfind(sp,spin_label_tmp) + length(spin_label_tmp));
+                            phase_s = sp(strfind(sp,spin_label_tmp) + length(spin_label_tmp));% Phase character
                             switch phase_s
                                 case {'x','X'}, phase_id = 1;
                                 case {'y','Y'}, phase_id = 2;
                                 case {'z','Z'}, phase_id = 3;
-                                case '*', phase_id = [1;2;3];
+                                case '*', phase_id = [1;2;3];% Wildcard
                                 otherwise, phase_id = 0;
                             end
 
                             if length(phase_id) == 1
                                     axis_tmp(:,id_tmp) = phase_id;
-                            elseif length(phase_id) == 3
-                                    axis_tmp = repmat(axis_tmp,3,1);
-                                    rate_tmp = size(axis_tmp,1)/3;
-                                    phase_id_vec = [1*ones(rate_tmp,1);2*ones(rate_tmp,1);3*ones(rate_tmp,1)];
+                            elseif length(phase_id) == 3% Wildcard for phase
+                                    axis_tmp = repmat(axis_tmp,3,1);% Expand the row size of axis_tmp 3 times. 
+                                    rate_tmp = size(axis_tmp,1)/3;%
+                                    phase_id_vec = [1*ones(rate_tmp,1);2*ones(rate_tmp,1);3*ones(rate_tmp,1)];% phase_id_vec = [1 1 1... 2 2 2... 3 3 3...]'
                                     axis_tmp(:,id_tmp) = phase_id_vec;
                             end
                         end
@@ -978,10 +1006,8 @@ classdef PO
                     id_in = cat(1,id_in,id_tmp2);% connect columns
                 end % for ii
             end % isa(id_in,'cell')
-            obj.axis(id_in,:) = [];
-            obj.coef(id_in,:) = [];
-            obj = CombPO(obj);
-        end % delPO
+            id_out = id_in;
+        end
 
         %% id_vec = findcoef(obj,coef_in_cell)
         function id_vec = findcoef(obj,coef_in_cell)
