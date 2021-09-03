@@ -721,6 +721,19 @@ classdef PO
 
         end % jc 
        
+        %% obj = simjc(obj,sp_cell,q_cell)
+        function obj = simjc(obj,sp_cell,q_cell)
+            % obj = simjc(obj,sp_cell,q_cell)
+            obj_tmp = obj;
+            for ii = 1:max(size(sp_cell))
+               sp = sp_cell{ii};
+               q = q_cell{ii};
+               obj_tmp = jc(obj_tmp,sp,q);
+            end
+            obj = obj_tmp;
+        end
+
+
         %% dispPOtxt(obj)
        function dispPOtxt(obj)
         % dispPOtxt(obj)
@@ -1035,15 +1048,19 @@ classdef PO
         % ph_s = ph_num2str(ph_n)
         % Conversion from quadrature phase number (ph_n = 0,1,2,3)
         % to phase characters (ph_s = x,y,-x,-y)
-            if ph_n == 0
-                ph_s = 'x';
-            elseif ph_n == 1
-                ph_s = 'y';
-            elseif ph_n == 2
-                ph_s = '-x';
-            elseif ph_n == 3
-                ph_s = '-y';
-            end 
+            if isa(ph_n,'char')
+                ph_s = ph_n;
+            else
+                if ph_n == 0
+                    ph_s = 'x';
+                elseif ph_n == 1
+                    ph_s = 'y';
+                elseif ph_n == 2
+                    ph_s = '-x';
+                elseif ph_n == 3
+                    ph_s = '-y';
+                end
+            end
        end % ph_num2st
        
        %% coef = rec_coef(ph)
