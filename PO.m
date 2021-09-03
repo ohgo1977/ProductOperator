@@ -572,13 +572,31 @@ classdef PO
             % rho_new = simpulse(rho,{'I' 'S'},{'x' 'y'},{pi/2 pi/2})
             
             obj_tmp = obj;
+            spin_label_cell = obj.spin_label;
             for ii = 1:max(size(sp_cell))
-               sp = sp_cell{ii};
-               ph = ph_cell{ii};
-               q = q_cell{ii};
-               obj_tmp = pulse(obj_tmp,sp,ph,q);
-            end
-            obj = obj_tmp;
+                sp = sp_cell{ii};
+                ph = ph_cell{ii};
+                q = q_cell{ii};
+             
+                if ~isempty(strfind(sp,'*'))% Including 'I*' or '*'
+                   if length(sp) == 1% '*'
+                     for jj = 1:max(size(spin_label_cell))
+                         sp_tmp = spin_label_cell{jj};
+                            obj_tmp = pulse(obj_tmp,sp_tmp,ph,q);%Run pulse each
+                     end
+                   elseif length(sp) == 2
+                     id_vec = find(contains(spin_label_cell,sp(1)));
+                     for jj = id_vec
+                         sp_tmp = spin_label_cell{jj};
+                            obj_tmp = pulse(obj_tmp,sp_tmp,ph,q);%Run pulse each
+                     end
+                   end
+                else % sp doesn't include '*'
+                obj_tmp = pulse(obj_tmp,sp,ph,q);%Run pulse each
+                end
+             end
+             obj = obj_tmp;
+
         end % simpulse
         
         %% obj = cs(obj,sp,q)
@@ -628,13 +646,42 @@ classdef PO
         %% obj = simcs(obj,sp_cell,q_cell)
         function obj = simcs(obj,sp_cell,q_cell)
             % obj = simcs(obj,sp_cell,q_cell)
-            rho_tmp = obj;
+
+%            rho_tmp = obj;
+%            for ii = 1:max(size(sp_cell))
+%               sp = sp_cell{ii};
+%               q = q_cell{ii};
+%               rho_tmp = cs(rho_tmp,sp,q);
+%            end
+%            obj = rho_tmp;
+
+            obj_tmp = obj;
+            spin_label_cell = obj.spin_label;
             for ii = 1:max(size(sp_cell))
-               sp = sp_cell{ii};
-               q = q_cell{ii};
-               rho_tmp = cs(rho_tmp,sp,q);
-            end
-            obj = rho_tmp;
+                sp = sp_cell{ii};
+                q = q_cell{ii};
+             
+                if ~isempty(strfind(sp,'*'))% Including 'I*' or '*'
+                   if length(sp) == 1% '*'
+                     for jj = 1:max(size(spin_label_cell))
+                         sp_tmp = spin_label_cell{jj};
+                            obj_tmp = cs(obj_tmp,sp_tmp,,q);
+                     end
+                   elseif length(sp) == 2
+                     id_vec = find(contains(spin_label_cell,sp(1)));
+                     for jj = id_vec
+                         sp_tmp = spin_label_cell{jj};
+                         obj_tmp = cs(obj_tmp,sp_tmp,,q);
+                     end
+                   end
+                else % sp doesn't include '*'
+                obj_tmp = cs(obj_tmp,sp,q);
+                end
+             end
+             obj = obj_tmp;
+
+
+
         end % simcs        
         
         %% obj = jc(obj,sp,q)
@@ -731,18 +778,36 @@ classdef PO
         %% obj = simpulse_phshift(obj,sp_cell,ph_cell,q_cell)
         function obj = simpulse_phshift(obj,sp_cell,ph_cell,q_cell)
             % obj = simpulse_phshift(obj,sp_cell,ph_cell,q_cell)
-            obj_tmp = obj;
+
             if obj.disp == 1
                 fprintf(1,"simpulse_phshift starts\n")
             end
 
+            obj_tmp = obj;
+            spin_label_cell = obj.spin_label;
             for ii = 1:max(size(sp_cell))
-               sp = sp_cell{ii};
-               ph = ph_cell{ii};
-               q = q_cell{ii};
-               obj_tmp = pulse_phshift(obj_tmp,sp,ph,q);
-            end
-            obj = obj_tmp;
+                sp = sp_cell{ii};
+                ph = ph_cell{ii};
+                q = q_cell{ii};
+             
+                if ~isempty(strfind(sp,'*'))% Including 'I*' or '*'
+                   if length(sp) == 1% '*'
+                     for jj = 1:max(size(spin_label_cell))
+                         sp_tmp = spin_label_cell{jj};
+                            obj_tmp = pulse_phshift(obj_tmp,sp_tmp,ph,q);%Run pulse each
+                     end
+                   elseif length(sp) == 2
+                     id_vec = find(contains(spin_label_cell,sp(1)));
+                     for jj = id_vec
+                         sp_tmp = spin_label_cell{jj};
+                            obj_tmp = pulse_phshift(obj_tmp,sp_tmp,ph,q);%Run pulse each
+                     end
+                   end
+                else % sp doesn't include '*'
+                obj_tmp = pulse_phshift(obj_tmp,sp,ph,q);%Run pulse each
+                end
+             end
+             obj = obj_tmp;
 
             if obj.disp == 1
                 fprintf(1,"simpulse_phshift ends\n")
