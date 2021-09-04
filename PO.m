@@ -947,6 +947,7 @@ classdef PO
        %% obj = selPO(obj,id_in)
        function obj = selPO(obj,id_in)
         % obj = selPO(obj,id_in)
+        %
         % rho = selPO(rho,[1 2])
         % rho = selPO(rho,{'Ix'})
         % rho = selPO(rho,{'IzSz'})
@@ -966,6 +967,15 @@ classdef PO
 
         %% id_out = findterm(obj,id_in)
         function id_out = findterm(obj,id_in)
+            % id_out = findterm(obj,id_in)
+            %
+            % id_out = findterm(rho,[1 2])
+            % id_out = findterm(rho,{'Ix'})
+            % id_out = findterm(rho,{'IzSz'})
+            % id_out = findterm(rho,{'Ix' 'IzSz'})
+            % id_out = findterm(rho,{'IxS*'})
+            % id_out = findterm(rho,{'I*S*' 'I*S*K*'})
+            
             if isa(id_in,'cell') % case of cell
                 spin_label_cell = obj.spin_label;
                 spin_no = size(obj.axis,2);
@@ -980,7 +990,7 @@ classdef PO
 
                         spin_label_tmp = spin_label_cell{jj};
                         if contains(sp,spin_label_tmp)
-                            id_tmp = jj;
+                            id_tmp = jj;% Column ID of axis, i.e. each spin-type
                             phase_s = sp(strfind(sp,spin_label_tmp) + length(spin_label_tmp));% Phase character
                             switch phase_s
                                 case {'x','X'}, phase_id = 1;

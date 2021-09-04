@@ -1,0 +1,8 @@
+>> rho = PO(3,{'Ix' 'Sx' 'Kx'});
+>> rho.dispPO()
+   1     Ix         1
+   2     Sx         1
+   3     Kx         1
+>> rho = delPO(rho,[1 2])
+>> rho.dispPO()
+   1     Kx         1
