@@ -645,14 +645,6 @@ classdef PO
         function obj = simcs(obj,sp_cell,q_cell)
             % obj = simcs(obj,sp_cell,q_cell)
 
-%            rho_tmp = obj;
-%            for ii = 1:max(size(sp_cell))
-%               sp = sp_cell{ii};
-%               q = q_cell{ii};
-%               rho_tmp = cs(rho_tmp,sp,q);
-%            end
-%            obj = rho_tmp;
-
             obj_tmp = obj;
             spin_label_cell = obj.spin_label;
             for ii = 1:max(size(sp_cell))
@@ -799,9 +791,17 @@ classdef PO
             % expm(-1i*q*Ix*cos(ph))*expm(-1i*q*Iy*cos(ph))*rho*expm(1i*q*Ix*cos(ph))*expm(1i*q*Iy*cos(ph)), 
             % because [Ix,Iy] ~= 0.
 
+
+            % disp_org = obj.disp;
+            % obj.disp = 0;
             obj = cs(obj,sp,-ph);% 1
             obj = pulse(obj,sp,'x',q);% 2
             obj = cs(obj,sp,ph);% 3
+
+            % obj.disp = disp_org;
+
+
+
         end % pulse_phshift
         
         %% obj = simpulse_phshift(obj,sp_cell,ph_cell,q_cell)
@@ -812,7 +812,6 @@ classdef PO
                 fprintf(1,"simpulse_phshift starts\n")
             end
 
-            disp_org = obj.disp;
             obj_tmp = obj;
             spin_label_cell = obj.spin_label;
             for ii = 1:max(size(sp_cell))
