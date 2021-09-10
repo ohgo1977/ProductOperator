@@ -772,10 +772,33 @@ classdef PO
             % the order number of spin (1 for 'I', 2 for 'S' etc.).
             % ph: phase of the pulse, arbitrary phase is allowed (symbolic or double).
             % q: flip angle (symbolic or double)
-            
-            % Spin Dynamics 2nd Ed., p. 391
-            % [exp(-i*ph*Iz)*[exp(-i*q*Ix)*[exp(i*ph*Iz)*rho*exp(-i*ph*Iz)]*exp(i*q*Ix)]*exp(-i*ph*Iz)]
+
+            % Spin Dynamics 2nd Ed., p. 252, p. 391
+            %  The rotating-frame Hamiltonian of a pulse with phase ph can be described as
+            % H = wnut*(Ix*cos(ph) + Iy*sin(ph)) where wnut is a nutation frequency of the pulse.
+            % Then the propagator of this pulse is
+            % R(q) = exp(-i*q*(Ix*cos(ph) + Iy*sin(ph))) where q = wnut*t is a flip angle.
+            % R(q) can be rewritten as
+            % R(q) = Rz(ph)*Rx(q)*Rz(-ph).
+            % Then rho_new after the pulse is
+            % rho_new = R(q)*rho*R(-q)
+            % = [exp(-i*ph*Iz)*[exp(-i*q*Ix)*[exp(i*ph*Iz)*rho*exp(-i*ph*Iz)]*exp(i*q*Ix)]*exp(-i*ph*Iz)]
             %  ----3-----     ----2-----    ----1-----         ----1-----    ----2-----    ----3-----
+            % meaning
+            % 1. Rotation -ph along Z axis
+            % 2. Rotation   q along X axis
+            % 3. Rotation  ph along Z axis.
+            %
+            % In the case of matrix calculation, 
+            % expm(-1i*q*(Ix*cos(ph) + Iy*sin(ph)))*rho*expm(1i*q*(Ix*cos(ph) + Iy*sin(ph))) 
+            % is equivalent to 
+            % expm(-1i*ph*Iz)*expm(-1i*q*Ix)*expm(-1i*-ph*Iz)*rho*expm(1i*ph*Iz)*expm(1i*q*Ix)*expm(1i*-ph*Iz)
+            % However,
+            % expm(-1i*q*(Ix*cos(ph) + Iy*sin(ph)))*rho*expm(1i*q*(Ix*cos(ph) + Iy*sin(ph))) 
+            % is not equivalent to
+            % expm(-1i*q*Ix*cos(ph))*expm(-1i*q*Iy*cos(ph))*rho*expm(1i*q*Ix*cos(ph))*expm(1i*q*Iy*cos(ph)), 
+            % because [Ix,Iy] ~= 0.
+
             obj = cs(obj,sp,-ph);% 1
             obj = pulse(obj,sp,'x',q);% 2
             obj = cs(obj,sp,ph);% 3
@@ -789,6 +812,7 @@ classdef PO
                 fprintf(1,"simpulse_phshift starts\n")
             end
 
+            disp_org = obj.disp;
             obj_tmp = obj;
             spin_label_cell = obj.spin_label;
             for ii = 1:max(size(sp_cell))
