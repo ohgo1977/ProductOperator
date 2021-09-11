@@ -8,7 +8,7 @@ syms oI oS t
 rho = PO(2,{'Iz' 'Sz'});
 rho.dispPOtxt();
 
-States = 'cos';
+States = 'sin';
 
 switch States
     case 'cos'
