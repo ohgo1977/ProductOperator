@@ -126,11 +126,13 @@ classdef PO
 
         coherence   % Populations and coherences of a density operator
 
+        bracket % Binary value to indicate cases with (a+b) or (a-b) type coefficient (1: yes, 0: no)
+
     end
     
-    properties (Access = protected)
-        bracket % Binary value to indicate cases with (a+b) or (a-b) type coefficient (1: yes, 0: no)
-    end
+    % properties (Access = protected)
+    %     bracket % Binary value to indicate cases with (a+b) or (a-b) type coefficient (1: yes, 0: no)
+    % end
     
     properties (Dependent)
         % Learn more about Dependent and getter function.
@@ -152,7 +154,11 @@ classdef PO
     methods
         %% Ncoef_cnst = get.Ncoef(obj)
         function Ncoef_cnst = get.Ncoef(obj)
-            Ncoef_cnst = sym(2.^(sum((obj.axis~=0),2)-1));% 2^(N-1)            
+            if isempty(find(obj.axis == 4)) && isempty(find(obj.axis == 5)) % Cartesian
+                Ncoef_cnst = sym(2.^(sum((obj.axis~=0),2)-1));% 2^(N-1)
+            else
+                Ncoef_cnst = sym(ones(size(obj.axis,1),1));
+            end
         end % get.Ncoef
         
         %% txt_out = get.txt(obj)
@@ -176,7 +182,7 @@ classdef PO
 
                 % Adjustment of sign and Creation of txt
                 subexpr = children(coef_tmp);
-                if sign(subexpr{end})== -1||sign(coef_tmp) == -1 % Case of negative values
+                if sign(subexpr{end}) == -1 || sign(coef_tmp) == -1 % Case of negative values
                     % 1st condition: Symbols with negative sign such as -q, -1/2*q, etc..
                     % 2nd condition: symbolic negative values such as sym(-2).
                     if ~strcmp(char(coef_tmp),'-1')% if coef_tmp = sym(-1), it is not required to display -1 as a coeffcieint.
@@ -223,7 +229,12 @@ classdef PO
                     end
                 end
                 
-                Mo = M_tmp*2^(length(axis_tmp)-1)*obj.coef(ii);
+                if isempty(find(obj.axis == 4)) && isempty(find(obj.axis == 5))% Cartesian
+                    Mo = M_tmp*2^(length(axis_tmp)-1)*obj.coef(ii);
+                else
+                    Mo = M_tmp*obj.coef(ii);
+                end
+
                 if ii == 1
                    M_out = Mo; 
                 else
@@ -386,9 +397,9 @@ classdef PO
             coef_out = coef_out(id_vec,:);
             bracket_out = bracket_out(id_vec,:);
 
-            axis_out(find(axis_out == 0)) = 4;% Replace 0 to 4 so for sorting
+            axis_out(find(axis_out == 0)) = 9;% Replace 0 to 9 so for sorting
             [axis_sort, id_sort] = sortrows(axis_out,'ascend');
-            axis_sort(find(axis_sort == 4)) = 0;% Replace 4 to 0
+            axis_sort(find(axis_sort == 9)) = 0;% Replace 9 to 0
             obj.axis = axis_sort;
 
             obj.coef = coef_out(id_sort,:);
@@ -495,7 +506,7 @@ classdef PO
         end % UrhoUinv
         
         %% obj = pulse(obj,sp,ph,q)
-        function obj = pulse(obj,sp,ph,q)
+        function [obj, id_sp] = pulse(obj,sp,ph,q)
             % obj = pulse(obj,sp,ph,q)
             % Calculation of the change of rho under a pulse.
             % obj: PO class object
@@ -510,11 +521,11 @@ classdef PO
             if isa(sp,'char')
                 for ii = 1:length(spin_label_cell)
                     if ~isempty(strfind(sp,spin_label_cell{ii}))
-                        id_tmp = ii;
+                        id_sp = ii;
                     end
                 end
             elseif isa(sp,'double')
-                id_tmp = sp;
+                id_sp = sp;
             end
 
             if strcmp(ph,'x')==1||strcmp(ph,'X')==1||(isa(ph,'double')&&ph == 0)
@@ -534,7 +545,7 @@ classdef PO
                 coef_tmp = sym(-1);
                 ph_tmp = '-y';
             end
-            axis_tmp(id_tmp) = phase_id;
+            axis_tmp(id_sp) = phase_id;
 
             H = PO();
             H.axis = axis_tmp;% 1:x, 2:y, 3:z, 0: no type assgined
@@ -544,9 +555,9 @@ classdef PO
             obj = UrhoUinv(obj,H,q);
 
             if strcmp(class(q),'sym') == 1
-                s_out = sprintf('Pulse: %s %s %s',spin_label_cell{id_tmp},char(q),ph_tmp);
+                s_out = sprintf('Pulse: %s %s %s',spin_label_cell{id_sp},char(q),ph_tmp);
             else
-                s_out = sprintf('Pulse: %s%4d%s',spin_label_cell{id_tmp},round(q/pi*180),ph_tmp);
+                s_out = sprintf('Pulse: %s%4d%s',spin_label_cell{id_sp},round(q/pi*180),ph_tmp);
             end
 
             if obj.disp == 1
@@ -598,7 +609,7 @@ classdef PO
         end % simpulse
         
         %% obj = cs(obj,sp,q)
-        function obj = cs(obj,sp,q)
+        function [obj, id_sp] = cs(obj,sp,q)
             % obj = cs(obj,sp,q)
             % Calculation of the chemical shift evolution of rho.
             % obj: PO class object
@@ -612,14 +623,14 @@ classdef PO
             if isa(sp,'char')
                 for ii = 1:length(spin_label_cell)
                     if ~isempty(strfind(sp,spin_label_cell{ii}))
-                        id_tmp = ii;
+                        id_sp = ii;
                     end
                 end
             elseif isa(sp,'double')
-                id_tmp = sp;
+                id_sp = sp;
             end            
                         
-            axis_tmp(id_tmp) = 3;%Z direction
+            axis_tmp(id_sp) = 3;%Z direction
 
             H = PO();
             H.axis = axis_tmp;% 1:x, 2:y, 3:z, 0: no type assgined
@@ -629,9 +640,9 @@ classdef PO
             obj = UrhoUinv(obj,H,q);
 
             if strcmp(class(q),'sym') == 1
-                s_out = sprintf('CS: %s %s',spin_label_cell{id_tmp},char(q));
+                s_out = sprintf('CS: %s %s',spin_label_cell{id_sp},char(q));
             else
-                s_out = sprintf('CS: %s%4d',spin_label_cell{id_tmp},round(q/pi*180));
+                s_out = sprintf('CS: %s%4d',spin_label_cell{id_sp},round(q/pi*180));
             end
 
             if obj.disp == 1
@@ -791,26 +802,38 @@ classdef PO
             % expm(-1i*q*Ix*cos(ph))*expm(-1i*q*Iy*cos(ph))*rho*expm(1i*q*Ix*cos(ph))*expm(1i*q*Iy*cos(ph)), 
             % because [Ix,Iy] ~= 0.
 
-
-            % disp_org = obj.disp;
-            % obj.disp = 0;
+            disp_org = obj.disp;
+            obj.disp = 0;
             obj = cs(obj,sp,-ph);% 1
             obj = pulse(obj,sp,'x',q);% 2
-            obj = cs(obj,sp,ph);% 3
+            [obj, id_sp] = cs(obj,sp,ph);% 3
+            obj.disp = disp_org;
 
-            % obj.disp = disp_org;
+            spin_label_cell = obj.spin_label;
+            if strcmp(class(q),'sym') == 1
+                if strcmp(class(ph),'sym') == 1
+                    s_out = sprintf('Pulse: %s %s %s',spin_label_cell{id_sp},char(q),char(ph));
+                else
+                    s_out = sprintf('Pulse: %s %s %4d',spin_label_cell{id_sp},char(q),round(ph/pi*180));
+                end
+            else
+                if strcmp(class(ph),'sym') == 1
+                    s_out = sprintf('Pulse: %s%4d%s',spin_label_cell{id_sp},round(q/pi*180),char(ph));
+                else
+                    s_out = sprintf('Pulse: %s%4d%4d',spin_label_cell{id_sp},round(q/pi*180),round(ph/pi*180));
+                end
+            end
 
-
+            if obj.disp == 1
+                fprintf(1,'%s\n',s_out);
+                fprintf(1,'    %s\n',obj.txt);
+            end
 
         end % pulse_phshift
         
         %% obj = simpulse_phshift(obj,sp_cell,ph_cell,q_cell)
         function obj = simpulse_phshift(obj,sp_cell,ph_cell,q_cell)
             % obj = simpulse_phshift(obj,sp_cell,ph_cell,q_cell)
-
-            if obj.disp == 1
-                fprintf(1,"simpulse_phshift starts\n")
-            end
 
             obj_tmp = obj;
             spin_label_cell = obj.spin_label;
@@ -836,11 +859,23 @@ classdef PO
             end
             obj = obj_tmp;
 
-            if obj.disp == 1
-                fprintf(1,"simpulse_phshift ends\n")
-            end
-
         end % simpulse_phshift
+
+        %% obj = pfg(obj,G,gamma_cell)
+        function obj = pfg(obj,G,gamma_cell)
+            % obj = pfg(obj,G,gamma_cell)
+
+            obj_tmp = obj;
+            spin_label_cell = obj.spin_label;
+            id_vec = 1:size(obj.axis,2);
+
+            for jj = id_vec
+                sp_tmp = spin_label_cell{jj};
+                q = G*gamma_cell{jj};
+                obj_tmp = cs(obj_tmp,sp_tmp,q);
+            end
+            obj = obj_tmp;
+        end % pfg        
         
        %% a0_V = SigAmp(obj,sp,phR)
        function [a0_V,rho_V] = SigAmp(obj,sp,phR)
@@ -941,6 +976,10 @@ classdef PO
                             at = 'y';
                         elseif axis_v == 3
                             at = 'z';
+                        elseif axis_v == 4
+                            at = 'p';
+                        elseif axis_v == 5
+                            at = 'm';
                         end                
                         pt = strcat(pt,st,at);
                     end            
@@ -1161,6 +1200,10 @@ classdef PO
                  M_tmp = 1/(2*1i)*[0 1;-1 0];
               elseif axis_v == 3% z
                  M_tmp = 1/2*[1 0;0 -1];
+              elseif axis_v == 4% p
+                    M_tmp = [0 1;0 0];
+              elseif axis_v == 5% m
+                    M_tmp = [0 0;1 0];   
               end
           end
           M_out = sym(M_tmp);
