@@ -3,7 +3,6 @@
 % Description : Functions for Product Operator Formalism
 % Requirement : MATLAB Symbolic Math Toolbox
 % Developer   : Dr. Kosuke Ohgo
-% Change for Practice
 % ------------------------------------------------------------------------
 %
 % ------------------------------------------------------------------------
@@ -112,6 +111,7 @@
 %   PO.SigAmp
 %       Syntax      : a0_V = SigAmp(obj,sp,phR)
 
+%%
 classdef PO    
     properties
         axis        % Showing the status of axis direction for each spin.
@@ -124,12 +124,13 @@ classdef PO
 
         disp = 1    % Control the display of the applied method on the monitor. 1: On, 2: Off
 
+        bracket % Binary value to indicate cases with (a+b) or (a-b) type coefficient (1: yes, 0: no)
 
     end
     
-    properties (Access = protected)
-        bracket % Binary value to indicate cases with (a+b) or (a-b) type coefficient (1: yes, 0: no)
-    end
+    % properties (Access = protected)
+    %     bracket % Binary value to indicate cases with (a+b) or (a-b) type coefficient (1: yes, 0: no)
+    % end
     
     properties (Dependent)
         % Learn more about Dependent and getter function.
@@ -143,9 +144,8 @@ classdef PO
     
     properties (Constant = true)
         sqn = sym(1/2);% Spin Quantum Number
-
      %   url = 'https://github.com/ohgo1977/ProductOperator';
-     %   version = '0.0.0';% Major.Minor.Patch
+     %   version = '1.0.0';% Major.Minor.Patch
 
     end
         
@@ -317,9 +317,11 @@ classdef PO
                             phase_s = sp(strfind(sp,spin_label_tmp) + length(spin_label_tmp));
 
                             switch phase_s
-                                case {'x','X'}, phase_id = 1;
-                                case {'y','Y'}, phase_id = 2;
-                                case {'z','Z'}, phase_id = 3;
+                                case 'x', phase_id = 1;
+                                case 'y', phase_id = 2;
+                                case 'z', phase_id = 3;
+                                case 'p', phase_id = 4;
+                                case 'm', phase_id = 5;
                                 otherwise, phase_id = 0;
                             end
                             axis_tmp(id_tmp) = phase_id;
@@ -420,12 +422,11 @@ classdef PO
 
 
         end %CombPO
-        
-        %% obj = xyz2pmz(obj);
+
+        % obj = xyz2pmz(obj);
         function obj = xyz2pmz(obj);
             % obj = xyz2pmz(obj)
             % conversion from Cartesian operator basis to lowring/raising operator basis
-        
             axis_in = obj.axis;
             coef_in = obj.coef;
             Ncoef_in = obj.Ncoef;
@@ -437,32 +438,53 @@ classdef PO
                 axis_tmp = axis_in(ii,:);
         
                 % Conversion from Ix and Iy to Ip and Im
-                xn = 2^length(find(axis_tmp == 1)); % Example: IxSyKx =>(Ip + Im)(Sp - Sm)(Kp + Km)
-                yn = 2^length(find(axis_tmp == 2)); % => 2^2 * 2^1 = 8.
-                xyn = xn*yn;
-                axis_out_tmp = zeros(xyn,spin_no); % 0: additive identity
-                coef_out_tmp = ones(xyn,1); % 1: multiplicative identity
+                xn = length(find(axis_tmp == 1)); % Example: IxSyKx =>(Ip + Im)(Sp - Sm)(Kp + Km)
+                yn = length(find(axis_tmp == 2)); % => 2^2 * 2^1 = 8.
+                xyn = 2^(xn + yn);
+                axis_out_tmp = repmat(axis_tmp,xyn,1);
+                axis_out_tmp(axis_out_tmp == 1) = 0; % Remove Ix
+                axis_out_tmp(axis_out_tmp == 2) = 0; % Remove Iy
+                coef_out_tmp = ones(xyn,1); %
         
+                dec = [0:xyn-1];
+                bin = dec2bin(dec,(xn + yn));% 0, 1 str            
+                % Converting from str to double for each character
+                bin_mat = zeros(xyn,xn + yn);
+                for nn = 1:xyn
+                    for kk = 1:(xn + yn)
+                        bin_mat(nn,kk) = str2double(bin(nn,kk));
+                    end
+                end
+                bin_mat (bin_mat == 0) = 4;
+                bin_mat (bin_mat == 1) = 5;
+                % Creation of the pattern
+                % 4 4 4 
+                % 4 4 5
+                % 4 5 4
+                % 4 5 5
+                % 5 4 4
+                % 5 4 5
+                % 5 5 4
+                % 5 5 5
+
+                int_count = 0;
                 for jj = 1:spin_no
                     axis_v = axis_tmp(jj);
-                    if axis_v == 1 % Ix = 1/2*(Ip + Im), 4: Ip, 5: Im
-                        v_tmp = repmat([4;5],xyn/2,1);  % [4;5;4;5;4;5;...]
-                        c_tmp = repmat([1;1]/2,xyn/2,1);% [1;1;1;1;1;1;...]/2
-        
-                    elseif axis_v == 2 % Iy = 1/(2*1i)*(Ip - Im)
-                        v_tmp = [repmat(4,xyn/2,1);repmat(5,xyn/2,1)];% [4;4;4;...;5;5;5;...]
-                        c_tmp = [repmat(1/(2*1i),xyn/2,1);repmat(-1/(2*1i),xyn/2,1)];%[1;1;1;...;-1;-1;-1;...]/(2*1i)
-        
-                    elseif axis_v == 3 % Iz
-                        v_tmp = repmat(3,xyn,1);
-                        c_tmp = ones(xyn,1);
-        
-                    elseif axis_v == 0 
-                        v_tmp = zeros(xyn,1);
-                        c_tmp = ones(xyn,1);
+                    if axis_v == 1 || axis_v == 2
+                        int_count = int_count + 1;
+                        bin_vec = bin_mat(:,int_count);
+                        axis_out_tmp(:,jj) = bin_vec;
+
+                        c_tmp = zeros(size(bin_vec));
+                        if axis_v == 1 % Ix = 1/2*Ip + 1/2*Im
+                            c_tmp(bin_vec == 4) = 1/2; % 
+                            c_tmp(bin_vec == 5) = 1/2;
+                        elseif axis_v == 2 % Iy = 1/(2i)*Ip - 1/(2i)*Im
+                            c_tmp(bin_vec == 4) = 1/(2*1i);
+                            c_tmp(bin_vec == 5) = -1/(2*1i);
+                        end
+                        coef_out_tmp = coef_out_tmp.*c_tmp;
                     end
-                    axis_out_tmp(:,jj) = v_tmp;
-                    coef_out_tmp = coef_out_tmp.*c_tmp;
                 end
                 axis_out = [axis_out;axis_out_tmp];
                 coef_out_tmp = coef_out_tmp*coef_in(ii)*Ncoef_in(ii);
@@ -485,9 +507,90 @@ classdef PO
             obj2.spin_label = obj.spin_label;
             obj2.bracket = bracket_out;% change the property of bracket later.
             obj = CombPO(obj2);
-            % obj.coef = rewrite(obj.coef,'exp');
         end
-        % xyz2pmz()
+        % xyz2pmz
+
+        % obj = pmz2xyz(obj);
+        function obj = pmz2xyz(obj);
+            % obj = xyz2pmz(obj)
+            % conversion from lowring/raising operator basis to Cartesian operator basis.
+            axis_in = obj.axis;
+            coef_in = obj.coef;
+            Ncoef_in = obj.Ncoef;
+            spin_no = size(axis_in,2);
+        
+            axis_out = [];
+            coef_out = [];
+            for ii = 1:size(axis_in,1)
+                axis_tmp = axis_in(ii,:);
+        
+                % Conversion from Ix and Iy to Ip and Im
+                xn = length(find(axis_tmp == 4)); % Example: IxSyKx =>(Ip + Im)(Sp - Sm)(Kp + Km)
+                yn = length(find(axis_tmp == 5)); % => 2^2 * 2^1 = 8.
+                xyn = 2^(xn + yn);
+                axis_out_tmp = repmat(axis_tmp,xyn,1);
+                axis_out_tmp(axis_out_tmp == 4) = 0; % Remove Ip
+                axis_out_tmp(axis_out_tmp == 5) = 0; % Remove Im
+                coef_out_tmp = ones(xyn,1); %
+        
+                dec = [0:xyn-1];
+                bin = dec2bin(dec,(xn + yn));%str            
+                % Converting from str to double for each character
+                bin_mat = zeros(xyn,xn + yn);
+                for nn = 1:xyn
+                    for kk = 1:(xn + yn)
+                        bin_mat(nn,kk) = str2double(bin(nn,kk));
+                    end
+                end
+                bin_mat (bin_mat == 0) = 2;
+                bin_mat (bin_mat == 1) = 1;
+
+                int_count = 0;
+                for jj = 1:spin_no
+                    axis_v = axis_tmp(jj);
+                    if axis_v == 4 || axis_v == 5
+                        int_count = int_count + 1;
+                        bin_vec = bin_mat(:,int_count);
+                        axis_out_tmp(:,jj) = bin_vec;
+
+                        c_tmp = zeros(size(bin_vec));
+                        if axis_v == 4
+                            c_tmp(bin_vec == 1) = 1;
+                            c_tmp(bin_vec == 2) = 1i;
+                        elseif axis_v == 5
+                            c_tmp(bin_vec == 1) = 1;
+                            c_tmp(bin_vec == 2) = -1i;
+                        end
+                        coef_out_tmp = coef_out_tmp.*c_tmp;
+                    end
+                end
+                axis_out = [axis_out;axis_out_tmp];
+                coef_out_tmp = coef_out_tmp*coef_in(ii)*Ncoef_in(ii)*(1/2)^(xn + yn - 1);
+                % IpSp => IxSx etc. created. Then Ncoef is calculated as 2 for IxSx. 
+                % Thus it is necessary to compensate the factor of 2 here as coef.
+                coef_out = [coef_out;coef_out_tmp];
+            end
+        
+            bracket_out = [];
+            for ii = 1:length(coef_out)
+                symcoef = coef_out(ii);
+                if contains(char(symcoef),'+')||contains(char(symcoef),'-')% 'a+b' or 'a-b'-type coefficients
+                    bracket_out = cat(1,bracket_out,1);
+                else
+                    bracket_out = cat(1,bracket_out,0);
+                end
+            end
+        
+            disp(coef_out)
+            disp(axis_out)
+            obj2 = PO();
+            obj2.axis = axis_out;
+            obj2.coef = coef_out;
+            obj2.spin_label = obj.spin_label;
+            obj2.bracket = bracket_out;% change the property of bracket later.
+            obj = CombPO(obj2);
+        end
+        % pmz2xyz
 
         %% obj = UrhoUinv(obj,H,q)
         function obj = UrhoUinv(obj,H,q)
@@ -1097,7 +1200,7 @@ classdef PO
         % rho = selPO(rho,{'Ix' 'IzSz'})
         % rho = selPO(rho,{'IxS*'})
         % rho = selPO(rho,{'I*S*' 'I*S*K*'})
-        % Selete particular terms in obj.
+        % Select particular terms in obj.
         % id_in is a vector including id numbers for the terms to be seleted.
         % These number can be obtained by dispPO(obj).
 
@@ -1128,7 +1231,7 @@ classdef PO
                 for ii = 1:max(size(sp_cell))
                     sp = sp_cell{ii};
 
-                    axis_tmp = zeros(1,spin_no);
+                    axis_tmp = zeros(1,spin_no); % Store 
                     for jj = 1:length(spin_label_cell)
 
                         spin_label_tmp = spin_label_cell{jj};
@@ -1136,20 +1239,31 @@ classdef PO
                             id_tmp = jj;% Column ID of axis, i.e. each spin-type
                             phase_s = sp(strfind(sp,spin_label_tmp) + length(spin_label_tmp));% Phase character
                             switch phase_s
-                                case {'x','X'}, phase_id = 1;
-                                case {'y','Y'}, phase_id = 2;
-                                case {'z','Z'}, phase_id = 3;
-                                case '*', phase_id = [1;2;3];% Wildcard
+                                case 'x', phase_id = 1;
+                                case 'y', phase_id = 2;
+                                case 'z', phase_id = 3;
+                                case 'p', phase_id = 4;
+                                case 'm', phase_id = 5;
+                                case '*', phase_id = [1;2;3;4;5];% Wildcard
                                 otherwise, phase_id = 0;
                             end
 
                             if length(phase_id) == 1
                                     axis_tmp(:,id_tmp) = phase_id;
-                            elseif length(phase_id) == 3% Wildcard for phase
-                                    axis_tmp = repmat(axis_tmp,3,1);% Expand the row size of axis_tmp 3 times. 
-                                    rate_tmp = size(axis_tmp,1)/3;%
-                                    phase_id_vec = [1*ones(rate_tmp,1);2*ones(rate_tmp,1);3*ones(rate_tmp,1)];% phase_id_vec = [1 1 1... 2 2 2... 3 3 3...]'
-                                    axis_tmp(:,id_tmp) = phase_id_vec;
+                            % elseif length(phase_id) == 3% Wildcard for phase
+                            %         axis_tmp = repmat(axis_tmp,3,1);% Expand the row size of axis_tmp 3 times. 
+                            %         rate_tmp = size(axis_tmp,1)/3;%
+                            %         phase_id_vec = [1*ones(rate_tmp,1);2*ones(rate_tmp,1);3*ones(rate_tmp,1)];% phase_id_vec = [1 1 1... 2 2 2... 3 3 3...]'
+                            %         axis_tmp(:,id_tmp) = phase_id_vec;
+                            elseif length(phase_id) == 5% Wildcard for phase
+                                axis_tmp = repmat(axis_tmp,5,1);% Expand the row size of axis_tmp 5 times. 
+                                rate_tmp = size(axis_tmp,1)/5;%
+                                phase_id_vec = [1*ones(rate_tmp,1);...
+                                                2*ones(rate_tmp,1);...
+                                                3*ones(rate_tmp,1);...
+                                                4*ones(rate_tmp,1);...
+                                                5*ones(rate_tmp,1)];% phase_id_vec = [1 1 1... 2 2 2... 3 3 3...4 4 4...5 5 5...]'
+                                axis_tmp(:,id_tmp) = phase_id_vec;                            
                             end
                         end
                     end % for jj
