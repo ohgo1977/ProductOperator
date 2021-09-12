@@ -124,23 +124,21 @@ classdef PO
 
         disp = 1    % Control the display of the applied method on the monitor. 1: On, 2: Off
 
-        coherence   % Populations and coherences of a density operator
-
-        bracket % Binary value to indicate cases with (a+b) or (a-b) type coefficient (1: yes, 0: no)
 
     end
     
-    % properties (Access = protected)
-    %     bracket % Binary value to indicate cases with (a+b) or (a-b) type coefficient (1: yes, 0: no)
-    % end
+    properties (Access = protected)
+        bracket % Binary value to indicate cases with (a+b) or (a-b) type coefficient (1: yes, 0: no)
+    end
     
     properties (Dependent)
         % Learn more about Dependent and getter function.
         % https://www.mathworks.com/help/matlab/matlab_oop/property-get-methods.html
 
-        Ncoef % The 2^(N-1) coefficient for N spin 1/2 system (Symbolic) 
-        txt   % Text output of Product Operators (String)
-        M     % Matrix Form
+        Ncoef       % The 2^(N-1) coefficient for N spin 1/2 system (Symbolic) 
+        txt         % Text output of Product Operators (String)
+        M           % Matrix Form
+        coherence   % Populations and coherences of a density operator
     end
     
     properties (Constant = true)
@@ -154,9 +152,9 @@ classdef PO
     methods
         %% Ncoef_cnst = get.Ncoef(obj)
         function Ncoef_cnst = get.Ncoef(obj)
-            if isempty(find(obj.axis == 4)) && isempty(find(obj.axis == 5)) % Cartesian
+            if isempty(find(obj.axis == 4)) && isempty(find(obj.axis == 5)) % Cartesian operator basis
                 Ncoef_cnst = sym(2.^(sum((obj.axis~=0),2)-1));% 2^(N-1)
-            else
+            else % Raising/Lowering  operator basis
                 Ncoef_cnst = sym(ones(size(obj.axis,1),1));
             end
         end % get.Ncoef
@@ -182,9 +180,13 @@ classdef PO
 
                 % Adjustment of sign and Creation of txt
                 subexpr = children(coef_tmp);
-                if sign(subexpr{end}) == -1 || sign(coef_tmp) == -1 % Case of negative values
+                if sign(subexpr{end}) == -1 || sign(coef_tmp) == -1 || sign(subexpr{end}) == -1i || ... 
+                 (length(subexpr) == 2 && sign(subexpr{1}) == -1 && sign(subexpr{2}) == 1i)
+                    % Case of negative values: change the position of '-'.
                     % 1st condition: Symbols with negative sign such as -q, -1/2*q, etc..
                     % 2nd condition: symbolic negative values such as sym(-2).
+                    % 3rd condition: symbols with negative imaginary such as -a*1i
+                    % 4th condition: symbolic negative imaginary valuess such as -5*1i
                     if ~strcmp(char(coef_tmp),'-1')% if coef_tmp = sym(-1), it is not required to display -1 as a coeffcieint.
                         if bracket_tmp == 1
                             ptc = strcat(ptc,'*','(',char(-1*coef_tmp),')');% Add bracket for 'a-b'-type coefficient
@@ -192,7 +194,7 @@ classdef PO
                             ptc = strcat(ptc,'*',char(-1*coef_tmp));
                         end
                     end
-                    txt_out = [txt_out,' ','-',' ',ptc];% Add Negative sign
+                    txt_out = [txt_out,' ','-',' ',ptc];% Add Negative sign in the text
 
                 else % Symbols with positive sign such as q in addtion to symbolic positive numbers.
                     if ~strcmp(char(coef_tmp),'1')% if coef_tmp = sym(1), it is not required to display 1 as a coeffcieint.
@@ -229,10 +231,16 @@ classdef PO
                     end
                 end
                 
-                if isempty(find(obj.axis == 4)) && isempty(find(obj.axis == 5))% Cartesian
-                    Mo = M_tmp*2^(length(axis_tmp)-1)*obj.coef(ii);
+                if isempty(find(obj.axis == 4)) && isempty(find(obj.axis == 5))% Cartesian operator basis
+                    Mo = M_tmp*2^(length(axis_tmp)-1)*obj.coef(ii); % Apply 2^(N-1) factor
                 else
-                    Mo = M_tmp*obj.coef(ii);
+                    Mo = M_tmp*obj.coef(ii)*2^length(find(axis_tmp == 0));
+                    % Compensate a factor from 1/2*E
+                    % Ix in 3-spin system: 2^(3-1)* 1/2*sx X 1/2*E X 1/2*E (sx: Pauli matrix, X: Kron)
+                    % Thus, the coefficient is 1/2.
+                    % Ix = 1/2*Ip + 1/2*Im
+                    % 1/2*IP in 3-spin system: 1/2*sp X 1/2*E X 1/2*E (sp: [0 1;0 0])
+                    % To get the coeffcient of 1/2, it is necessary to multiply 2^2.
                 end
 
                 if ii == 1
@@ -243,6 +251,13 @@ classdef PO
             end
         end % get.M(obj)
         
+        %% coherence_out = get.coherence(obj)
+        function coherence_out = get.coherence(obj)   % Populations and coherences of a density operator
+            spin_no = size(obj.axis,2);
+            coherence_out = PO.rho_box(spin_no);
+            coherence_out(find(obj.M == 0)) = 0;
+        end
+
         %% obj = PO(spin_no,sp_cell,symcoef_cell,spin_label_cell)
         function obj = PO(spin_no,sp_cell,symcoef_cell,spin_label_cell) 
             % obj = PO(spin_no,sp_cell,symcoef_cell,spin_label_cell)
@@ -332,7 +347,6 @@ classdef PO
                 obj.coef = coef_out;% Coefficient for the product operator
                 obj.spin_label = spin_label_cell;
                 obj.bracket = bracket_out;% 1: put bracket if coefficient is a sum-form.
-                obj.coherence = PO.rho_box(spin_no);
                 obj = CombPO(obj);
             end
         end % PO
@@ -401,13 +415,80 @@ classdef PO
             [axis_sort, id_sort] = sortrows(axis_out,'ascend');
             axis_sort(find(axis_sort == 9)) = 0;% Replace 9 to 0
             obj.axis = axis_sort;
-
             obj.coef = coef_out(id_sort,:);
             obj.bracket = bracket_out(id_sort,:);
 
 
         end %CombPO
         
+        %% obj = xyz2pmz(obj);
+        function obj = xyz2pmz(obj);
+            % obj = xyz2pmz(obj)
+            % conversion from Cartesian operator basis to lowring/raising operator basis
+        
+            axis_in = obj.axis;
+            coef_in = obj.coef;
+            Ncoef_in = obj.Ncoef;
+            spin_no = size(axis_in,2);
+        
+            axis_out = [];
+            coef_out = [];
+            for ii = 1:size(axis_in,1)
+                axis_tmp = axis_in(ii,:);
+        
+                % Conversion from Ix and Iy to Ip and Im
+                xn = 2^length(find(axis_tmp == 1)); % Example: IxSyKx =>(Ip + Im)(Sp - Sm)(Kp + Km)
+                yn = 2^length(find(axis_tmp == 2)); % => 2^2 * 2^1 = 8.
+                xyn = xn*yn;
+                axis_out_tmp = zeros(xyn,spin_no); % 0: additive identity
+                coef_out_tmp = ones(xyn,1); % 1: multiplicative identity
+        
+                for jj = 1:spin_no
+                    axis_v = axis_tmp(jj);
+                    if axis_v == 1 % Ix = 1/2*(Ip + Im), 4: Ip, 5: Im
+                        v_tmp = repmat([4;5],xyn/2,1);  % [4;5;4;5;4;5;...]
+                        c_tmp = repmat([1;1]/2,xyn/2,1);% [1;1;1;1;1;1;...]/2
+        
+                    elseif axis_v == 2 % Iy = 1/(2*1i)*(Ip - Im)
+                        v_tmp = [repmat(4,xyn/2,1);repmat(5,xyn/2,1)];% [4;4;4;...;5;5;5;...]
+                        c_tmp = [repmat(1/(2*1i),xyn/2,1);repmat(-1/(2*1i),xyn/2,1)];%[1;1;1;...;-1;-1;-1;...]/(2*1i)
+        
+                    elseif axis_v == 3 % Iz
+                        v_tmp = repmat(3,xyn,1);
+                        c_tmp = ones(xyn,1);
+        
+                    elseif axis_v == 0 
+                        v_tmp = zeros(xyn,1);
+                        c_tmp = ones(xyn,1);
+                    end
+                    axis_out_tmp(:,jj) = v_tmp;
+                    coef_out_tmp = coef_out_tmp.*c_tmp;
+                end
+                axis_out = [axis_out;axis_out_tmp];
+                coef_out_tmp = coef_out_tmp*coef_in(ii)*Ncoef_in(ii);
+                coef_out = [coef_out;coef_out_tmp];
+            end
+        
+            bracket_out = [];
+            for ii = 1:length(coef_out)
+                symcoef = coef_out(ii);
+                if contains(char(symcoef),'+')||contains(char(symcoef),'-')% 'a+b' or 'a-b'-type coefficients
+                    bracket_out = cat(1,bracket_out,1);
+                else
+                    bracket_out = cat(1,bracket_out,0);
+                end
+            end
+        
+            obj2 = PO();
+            obj2.axis = axis_out;
+            obj2.coef = coef_out;
+            obj2.spin_label = obj.spin_label;
+            obj2.bracket = bracket_out;% change the property of bracket later.
+            obj = CombPO(obj2);
+            % obj.coef = rewrite(obj.coef,'exp');
+        end
+        % xyz2pmz()
+
         %% obj = UrhoUinv(obj,H,q)
         function obj = UrhoUinv(obj,H,q)
             % obj = UrhoUinv(obj,H,q)

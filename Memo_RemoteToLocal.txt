@@ -1,0 +1,1 @@
+(length(subexpr) == 2 && sign(subexpr{1}) == -1 && sign(subexpr{2}) == 1i)

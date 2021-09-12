@@ -12,4 +12,4 @@ rho = pfg(rho, G, {gH});
 Ip_coef = simplify(1/2*rho.coef(1) + 1/(2*1i)*rho.coef(2));
 Im_coef = simplify(1/2*rho.coef(1) - 1/(2*1i)*rho.coef(2));
 
-rho2 = dispRaiseLower(rho);
+rho2 = xyz2pmz(rho);
