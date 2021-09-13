@@ -1,6 +1,6 @@
 % ------------------------------------------------------------------------
 % Class       : PO
-% Description : Functions for Product Operator Formalism
+% Description : Functions for Product Operator Formalism of spin-1/2
 % Requirement : MATLAB Symbolic Math Toolbox
 % Developer   : Dr. Kosuke Ohgo
 % ------------------------------------------------------------------------
@@ -18,7 +18,6 @@
 %   obj.coef
 %   obj.spin_label
 %   obj.disp 
-%   obj.coherence
 % ------------------------------------------------------------------------
 % properties (Access = protected)
 % ------------------------------------------------------------------------
@@ -30,7 +29,7 @@
 %   obj.Ncoef
 %   obj.txt
 %   obj.M
-%
+%   obj.coherence
 % ------------------------------------------------------------------------
 % properties (Constant = true)
 % ------------------------------------------------------------------------
@@ -124,22 +123,23 @@ classdef PO
 
         disp = 1    % Control the display of the applied method on the monitor. 1: On, 2: Off
 
-        bracket % Binary value to indicate cases with (a+b) or (a-b) type coefficient (1: yes, 0: no)
+        % bracket % Binary value to indicate cases with (a+b) or (a-b) type coefficient (1: yes, 0: no)
 
     end
     
-    % properties (Access = protected)
-    %     bracket % Binary value to indicate cases with (a+b) or (a-b) type coefficient (1: yes, 0: no)
-    % end
+    properties (Access = protected)
+        bracket % Binary value to indicate cases with (a+b) or (a-b) type coefficient (1: yes, 0: no)
+        basis   % String value to distinguish the basis-status, 'xyz' or 'pmz'.
+    end
     
     properties (Dependent)
         % Learn more about Dependent and getter function.
         % https://www.mathworks.com/help/matlab/matlab_oop/property-get-methods.html
 
-        Ncoef       % The 2^(N-1) coefficient for N spin 1/2 system (Symbolic) 
+        Ncoef       % The 2^(N-1) coefficient for N spin-1/2 system (Symbolic) 
         txt         % Text output of Product Operators (String)
         M           % Matrix Form
-        coherence   % Populations and coherences of a density operator
+        coherence   % Populations (diagonal) and coherences (off-diagonal) of a density operator
     end
     
     properties (Constant = true)
@@ -152,9 +152,9 @@ classdef PO
     methods
         %% Ncoef_cnst = get.Ncoef(obj)
         function Ncoef_cnst = get.Ncoef(obj)
-            if isempty(find(obj.axis == 4)) && isempty(find(obj.axis == 5)) % Cartesian operator basis
+            if strcmp(obj.basis, 'xyz')% Cartesian operator basis
                 Ncoef_cnst = sym(2.^(sum((obj.axis~=0),2)-1));% 2^(N-1)
-            else % Raising/Lowering  operator basis
+            elseif strcmp(obj.basis, 'pmz')% Raising/Lowering  operator basis
                 Ncoef_cnst = sym(ones(size(obj.axis,1),1));
             end
         end % get.Ncoef
@@ -231,9 +231,9 @@ classdef PO
                     end
                 end
                 
-                if isempty(find(obj.axis == 4)) && isempty(find(obj.axis == 5))% Cartesian operator basis
+                if strcmp(obj.basis, 'xyz')% Cartesian operator basis
                     Mo = M_tmp*2^(length(axis_tmp)-1)*obj.coef(ii); % Apply 2^(N-1) factor
-                else
+                elseif strcmp(obj.basis, 'pmz')% Raising/Lowering  operator basis
                     Mo = M_tmp*obj.coef(ii)*2^length(find(axis_tmp == 0));
                     % Compensate a factor from 1/2*E
                     % Ix in 3-spin system: 2^(3-1)* 1/2*sx X 1/2*E X 1/2*E (sx: Pauli matrix, X: Kron)
@@ -255,7 +255,7 @@ classdef PO
         function coherence_out = get.coherence(obj)   % Populations and coherences of a density operator
             spin_no = size(obj.axis,2);
             coherence_out = PO.rho_box(spin_no);
-            coherence_out(find(obj.M == 0)) = 0;
+            coherence_out(obj.M == 0) = 0;
         end
 
         %% obj = PO(spin_no,sp_cell,symcoef_cell,spin_label_cell)
@@ -344,11 +344,22 @@ classdef PO
                    end
                 end
 
+
+                if isempty(find(axis_out == 4,1)) && isempty(find(axis_out == 5,1))% Cartesian operator basis
+                    basis_out = 'xyz';
+                elseif isempty(find(axis_out == 1,1)) && isempty(find(axis_out == 2,1))% Raising/Lowering operator basis
+                    basis_out = 'pmz';
+                else % Mixiture of Cartesian operator and Raising/Lowering operator basis
+                    msg = 'Error: XYZ-basis and +-Z basis are not mixed!!';
+                    error(msg);
+                end
+
                 obj = PO(); % spin_label is empty at this point
                 obj.axis = axis_out;% 1:x, 2:y, 3:z, 0: no type assgined
                 obj.coef = coef_out;% Coefficient for the product operator
                 obj.spin_label = spin_label_cell;
                 obj.bracket = bracket_out;% 1: put bracket if coefficient is a sum-form.
+                obj.basis = basis_out;
                 obj = CombPO(obj);
             end
         end % PO
@@ -413,20 +424,24 @@ classdef PO
             coef_out = coef_out(id_vec,:);
             bracket_out = bracket_out(id_vec,:);
 
-            axis_out(find(axis_out == 0)) = 9;% Replace 0 to 9 so for sorting
+            axis_out(axis_out == 0) = 9;% Replace 0 to 9 so for sorting
             [axis_sort, id_sort] = sortrows(axis_out,'ascend');
-            axis_sort(find(axis_sort == 9)) = 0;% Replace 9 to 0
+            axis_sort(axis_sort == 9) = 0;% Replace 9 to 0
             obj.axis = axis_sort;
             obj.coef = coef_out(id_sort,:);
             obj.bracket = bracket_out(id_sort,:);
 
-
         end %CombPO
 
-        % obj = xyz2pmz(obj);
+        % obj = xyz2pmz(obj)
         function obj = xyz2pmz(obj);
             % obj = xyz2pmz(obj)
             % conversion from Cartesian operator basis to lowring/raising operator basis
+
+            if strcmp(obj.basis,'pmz')
+                error('The basis of the object should be xyz')
+            end
+
             axis_in = obj.axis;
             coef_in = obj.coef;
             Ncoef_in = obj.Ncoef;
@@ -446,15 +461,8 @@ classdef PO
                 axis_out_tmp(axis_out_tmp == 2) = 0; % Remove Iy
                 coef_out_tmp = ones(xyn,1); %
         
-                dec = [0:xyn-1];
-                bin = dec2bin(dec,(xn + yn));% 0, 1 str            
-                % Converting from str to double for each character
-                bin_mat = zeros(xyn,xn + yn);
-                for nn = 1:xyn
-                    for kk = 1:(xn + yn)
-                        bin_mat(nn,kk) = str2double(bin(nn,kk));
-                    end
-                end
+                dec = 0:xyn - 1;
+                bin_mat = de2bi(dec,(xn + yn),'left-msb');
                 bin_mat (bin_mat == 0) = 4;
                 bin_mat (bin_mat == 1) = 5;
                 % Creation of the pattern
@@ -506,14 +514,20 @@ classdef PO
             obj2.coef = coef_out;
             obj2.spin_label = obj.spin_label;
             obj2.bracket = bracket_out;% change the property of bracket later.
+            obj2.basis = 'pmz';
             obj = CombPO(obj2);
         end
         % xyz2pmz
 
-        % obj = pmz2xyz(obj);
+        % obj = pmz2xyz(obj)
         function obj = pmz2xyz(obj);
             % obj = xyz2pmz(obj)
             % conversion from lowring/raising operator basis to Cartesian operator basis.
+
+            if strcmp(obj.basis,'xyz')
+                error('The basis of the object should be pmz')
+            end
+
             axis_in = obj.axis;
             coef_in = obj.coef;
             Ncoef_in = obj.Ncoef;
@@ -533,15 +547,8 @@ classdef PO
                 axis_out_tmp(axis_out_tmp == 5) = 0; % Remove Im
                 coef_out_tmp = ones(xyn,1); %
         
-                dec = [0:xyn-1];
-                bin = dec2bin(dec,(xn + yn));%str            
-                % Converting from str to double for each character
-                bin_mat = zeros(xyn,xn + yn);
-                for nn = 1:xyn
-                    for kk = 1:(xn + yn)
-                        bin_mat(nn,kk) = str2double(bin(nn,kk));
-                    end
-                end
+                dec = 0:xyn - 1;
+                bin_mat = de2bi(dec,(xn + yn),'left-msb');
                 bin_mat (bin_mat == 0) = 2;
                 bin_mat (bin_mat == 1) = 1;
 
@@ -581,13 +588,12 @@ classdef PO
                 end
             end
         
-            disp(coef_out)
-            disp(axis_out)
             obj2 = PO();
             obj2.axis = axis_out;
             obj2.coef = coef_out;
             obj2.spin_label = obj.spin_label;
             obj2.bracket = bracket_out;% change the property of bracket later.
+            obj2.basis = 'xyz';
             obj = CombPO(obj2);
         end
         % pmz2xyz
@@ -614,6 +620,11 @@ classdef PO
             %
             % If C is 0, no actions
             % If C is a negative value, change the sign of PO.coef.
+
+            if strcmp(obj.basis,'pmz') || strcmp(H.basis,'pmz')
+                error('The basis of the object should be xyz')
+            end
+
             mt = [ 0  3 -2; 
                   -3  0  1; 
                    2 -1  0];
@@ -700,6 +711,12 @@ classdef PO
             %     quadrature phase only.
             % q: flip angle in radian (symbolic or double)
             
+            basis_org = 'xyz';
+            if strcmp(obj.basis,'pmz')
+                obj =  pmz2xyz(obj);% Conversion to xyz
+                basis_org = 'pmz';
+            end
+
             axis_tmp = zeros(1,size(obj.axis,2));
             spin_label_cell = obj.spin_label;            
             if isa(sp,'char')
@@ -738,7 +755,11 @@ classdef PO
 
             obj = UrhoUinv(obj,H,q);
 
-            if strcmp(class(q),'sym') == 1
+            if strcmp(basis_org,'pmz')
+                obj =  xyz2pmz(obj);% Conversion to pmz
+            end
+
+            if isa(q,'sym') == 1
                 s_out = sprintf('Pulse: %s %s %s',spin_label_cell{id_sp},char(q),ph_tmp);
             else
                 s_out = sprintf('Pulse: %s%4d%s',spin_label_cell{id_sp},round(q/pi*180),ph_tmp);
@@ -748,7 +769,6 @@ classdef PO
                 fprintf(1,'%s\n',s_out);
                 fprintf(1,'    %s\n',obj.txt);
             end
-
         end % pulse
         
         %% obj = simpulse(obj,sp_cell,ph_cell,q_cell)
@@ -773,10 +793,10 @@ classdef PO
                 ph = ph_cell{ii};
                 q = q_cell{ii};
              
-                if ~isempty(strfind(sp,'*'))% Including 'I*' or '*'
-                    if length(sp) == 1% '*'
+                if contains(sp,'*')
+                    if length(sp) == 1% '*' applys pulse() to all spins.
                         id_vec = 1:max(size(spin_label_cell));
-                    elseif length(sp) == 2% 'I*' 
+                    elseif length(sp) == 2% 'I*' applys pulse() to I1, I2, ... if spin_label is set {'I1' 'I2' ...}
                         id_vec = find(contains(spin_label_cell,sp(1)));
                     end
 
@@ -801,12 +821,18 @@ classdef PO
             % the order number of spin (1 for 'I', 2 for 'S' etc.).
             % q: flip angle (symbolic or double)
             
+            basis_org = 'xyz';
+            if strcmp(obj.basis,'pmz')
+                obj =  pmz2xyz(obj);% Conversion to xyz
+                basis_org = 'pmz';
+            end
+
             axis_tmp = zeros(1,size(obj.axis,2));
             spin_label_cell = obj.spin_label;
 
             if isa(sp,'char')
                 for ii = 1:length(spin_label_cell)
-                    if ~isempty(strfind(sp,spin_label_cell{ii}))
+                    if contains(sp,spin_label_cell{ii})
                         id_sp = ii;
                     end
                 end
@@ -823,7 +849,11 @@ classdef PO
 
             obj = UrhoUinv(obj,H,q);
 
-            if strcmp(class(q),'sym') == 1
+            if strcmp(basis_org,'pmz')
+                obj =  xyz2pmz(obj);% Conversion to pmz
+            end
+
+            if isa(q,'sym') == 1
                 s_out = sprintf('CS: %s %s',spin_label_cell{id_sp},char(q));
             else
                 s_out = sprintf('CS: %s%4d',spin_label_cell{id_sp},round(q/pi*180));
@@ -846,7 +876,7 @@ classdef PO
                 sp = sp_cell{ii};
                 q = q_cell{ii};
              
-                if ~isempty(strfind(sp,'*'))% Including 'I*' or '*'
+                if contains(sp,'*')% Including 'I*' or '*'
                     if length(sp) == 1 % '*'
                         id_vec = 1:max(size(spin_label_cell));
                     elseif length(sp) == 2 % 'I*' 
@@ -867,6 +897,13 @@ classdef PO
         %% obj = jc(obj,sp,q)
         function obj = jc(obj,sp,q)
             % obj = jc(obj,sp,q)
+
+            basis_org = 'xyz';
+            if strcmp(obj.basis,'pmz')
+                obj =  pmz2xyz(obj);% Conversion to xyz
+                basis_org = 'pmz';
+            end
+
             axis_tmp = zeros(1,size(obj.axis,2));
             spin_label_cell = obj.spin_label;
 
@@ -895,7 +932,11 @@ classdef PO
 
             obj = UrhoUinv(obj,H,q);
 
-            if strcmp(class(q),'sym') == 1
+            if strcmp(basis_org,'pmz')
+                obj =  xyz2pmz(obj);% Conversion to pmz
+            end
+
+            if isa(q,'sym') == 1
                 s_out = sprintf('JC: %s %s',sp_tmp,char(q));
             else
                 s_out = sprintf('JC: %s%4d',sp_tmp,round(q/pi*180));
@@ -988,20 +1029,20 @@ classdef PO
 
             disp_org = obj.disp;
             obj.disp = 0;
-            obj = cs(obj,sp,-ph);% 1
-            obj = pulse(obj,sp,'x',q);% 2
-            [obj, id_sp] = cs(obj,sp,ph);% 3
+            obj = cs(obj,sp,-ph);        % 1. Rotation -ph along Z axis
+            obj = pulse(obj,sp,'x',q);   % 2. Rotation   q along X axis
+            [obj, id_sp] = cs(obj,sp,ph);% 3. Rotation  ph along Z axis.
             obj.disp = disp_org;
 
             spin_label_cell = obj.spin_label;
-            if strcmp(class(q),'sym') == 1
-                if strcmp(class(ph),'sym') == 1
+            if isa(q,'sym') == 1
+                if isa(ph,'sym') == 1
                     s_out = sprintf('Pulse: %s %s %s',spin_label_cell{id_sp},char(q),char(ph));
                 else
                     s_out = sprintf('Pulse: %s %s %4d',spin_label_cell{id_sp},char(q),round(ph/pi*180));
                 end
             else
-                if strcmp(class(ph),'sym') == 1
+                if isa(ph,'sym') == 1
                     s_out = sprintf('Pulse: %s%4d%s',spin_label_cell{id_sp},round(q/pi*180),char(ph));
                 else
                     s_out = sprintf('Pulse: %s%4d%4d',spin_label_cell{id_sp},round(q/pi*180),round(ph/pi*180));
@@ -1026,7 +1067,7 @@ classdef PO
                 ph = ph_cell{ii};
                 q = q_cell{ii};
              
-                if ~isempty(strfind(sp,'*'))% Including 'I*' or '*'
+                if contains(sp,'*')% Including 'I*' or '*'
                     if length(sp) == 1 % '*'
                         id_vec = 1:max(size(spin_label_cell));
                     elseif length(sp) == 2 % 'I*' 
@@ -1048,6 +1089,9 @@ classdef PO
         %% obj = pfg(obj,G,gamma_cell)
         function obj = pfg(obj,G,gamma_cell)
             % obj = pfg(obj,G,gamma_cell)
+            % applys pulse field gradient to all spins.
+            % G is a strengh of the field and 
+            % gamma_cell a cell array including gyromagnetic ratio of the spins.
 
             obj_tmp = obj;
             spin_label_cell = obj.spin_label;
@@ -1120,6 +1164,8 @@ classdef PO
             % Thus, rho.M.*(2*tril(Ix.M + Sx.M + ...)) extracts only (-1)-quantum coherence components in rho, 
             % i.e., tril(Ix.M + Sx.M + ...) works as a mask.
             %
+            % Since pmz basis operators can be used, this code may be written.
+            
             a0_V = reshape(a0_M,1,numel(a0_M));
             id_tmp = a0_V ~= sym(0);
             a0_V = a0_V(id_tmp);
@@ -1294,23 +1340,35 @@ classdef PO
             end
         end % findcoef
 
+        %% obj3 = commutator(obj1, obj2)
         function obj3 = commutator(obj1, obj2)
-            % M_out = commutator(obj1, obj2)
+            % obj3 = commutator(obj1, obj2)
             % Commutation between obj1 and obj2.
-            % If obj1 and obj2 don't commute, the obj3 is 
+            % If obj1 and obj2 don't commute, obj3 is 0
+            % if [A,B] = iC, then B ==> B*cos(q) + C*sin(q) under A. 
             obj3 = UrhoUinv(obj2,obj1,pi/2);
-            % if [A,B] = iC, then B ==> B*cos(q) + C*sin(q) under A.
 
-            if isempty(find(obj1.M - obj3.M ~= 0))% obj1 == obj3, i.e., obj3 = 0.
+            if isempty(find(obj1.M - obj3.M ~= 0, 1))% obj1 == obj3
                 % obj3 = PO(size(obj1.axis,2),{'1'},{sym(0)});
                 fprintf(1,'They commutate\n')
-
             else
-                obj3_tmp.coef = sym(1i);
-                obj3 = CombPO(obj3_tmp);
+%                 obj3_tmp.coef = sym(1i);
+                obj3.coef = obj3.coef*1i;
+                obj3 = CombPO(obj3);
             end
 
        end % commute
+
+       %% dispPara(obj, para_name)
+       function dispPara(obj, para_name)
+        % dispPara(obj, para_name)
+        % Display a property para_name in obj.
+        % para_name is a string.
+        % This function is useful to check a protected property.
+            para_out = eval(['obj.',para_name]);
+            disp(para_out)
+       end
+       % dispPara
 
     end % methods
     
@@ -1413,23 +1471,20 @@ classdef PO
         % p: b => a coherence
         % Spin Dynamics p. 470, p. 260, p. 160
         n_s = 2^n;
-        dec = (n_s-1:-1:0)';
+        dec = n_s-1:-1:0;
     
-        bin = dec2bin(dec,n);%str
-        % a: 1, b: 0
-        % a a a a ... a = 1 1 1 1 ... 1
-        % a a a a ... b = 1 1 1 1 ... 0
-        % b b b b ... a = 0 0 0 0 ... 1
-        % b b b b ... b = 0 0 0 0 ... 0
-    
-        % Converting from str to double for each character
-        bin_mat = zeros(n_s,n);
-        for ii = 1:n_s
-            for jj = 1:n
-                bin_mat(ii,jj) = str2double(bin(ii,jj));
-            end
-        end
-    
+        bin_mat = de2bi(dec,n,'left-msb');
+        % bin_mat = dec2bin(dec,n) - '0';
+        % % a: 1, b: 0
+        % % a a a = 1 1 1
+        % % a a b = 1 1 0
+        % % a b a = 1 0 1
+        % % a b b = 1 0 0
+        % % b a a = 0 1 1
+        % % b a b = 0 1 0
+        % % b b a = 0 0 1
+        % % b b b = 0 0 0
+     
         rho = sym(zeros(n_s,n_s));
         % rho(c,r) = <c|rho|r>
         % Since the spin state should be read from right to left,
