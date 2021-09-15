@@ -129,7 +129,10 @@ classdef PO
     
     properties (Access = protected)
         bracket % Binary value to indicate cases with (a+b) or (a-b) type coefficient (1: yes, 0: no)
-        basis   % String value to distinguish the basis-status, 'xyz' or 'pmz'.
+
+        basis   % String value to distinguish the basis-status in the calculations ('xyz' or 'pmz')
+                % Ideally it should be visible to users (but still protected).
+                % dispPara(obj,'basis') can be used to check this property.
     end
     
     properties (Dependent)
@@ -153,7 +156,11 @@ classdef PO
         %% Ncoef_cnst = get.Ncoef(obj)
         function Ncoef_cnst = get.Ncoef(obj)
             if strcmp(obj.basis, 'xyz')% Cartesian operator basis
-                Ncoef_cnst = sym(2.^(sum((obj.axis~=0),2)-1));% 2^(N-1)
+                Ncoef_cnst = sym(2.^(sum((obj.axis~=0),2)-1));
+                % 2^(Ns-1) 
+                % Examples 
+                % IxSx   => Ns = 2 => Ncoef = 2
+                % IxSxKx => Ns = 3 => Ncoef = 4
             elseif strcmp(obj.basis, 'pmz')% Raising/Lowering  operator basis
                 Ncoef_cnst = sym(ones(size(obj.axis,1),1));
             end
@@ -219,30 +226,27 @@ classdef PO
 
         %% M_out = get.M(obj)
         function M_out = get.M(obj)
+            % Create a Matrix representation.
             for ii = 1:size(obj.axis,1)
-                axis_tmp = obj.axis(ii,:);
+                axis_tmp = obj.axis(ii,:);% should include the case with 0: 1/2E
 
                 for jj = 1:length(axis_tmp)
                     Ma = obj.axis2M(axis_tmp(jj),obj.sqn); 
                     if jj == 1
                         M_tmp = Ma;
                     else
-                        M_tmp = kron(M_tmp, Ma);
+                        M_tmp = kron(M_tmp, Ma);% Kronecker tensor product
                     end
                 end
                 
-                if strcmp(obj.basis, 'xyz')% Cartesian operator basis
-                    Mo = M_tmp*2^(length(axis_tmp)-1)*obj.coef(ii); % Apply 2^(N-1) factor
-                elseif strcmp(obj.basis, 'pmz')% Raising/Lowering  operator basis
-                    Mo = M_tmp*obj.coef(ii)*2^length(find(axis_tmp == 0));
-                    % Compensate a factor from 1/2*E
-                    % Ix in 3-spin system: 2^(3-1)* 1/2*sx X 1/2*E X 1/2*E (sx: Pauli matrix, X: Kron)
-                    % Thus, the coefficient is 1/2.
-                    % Ix = 1/2*Ip + 1/2*Im
-                    % 1/2*IP in 3-spin system: 1/2*sp X 1/2*E X 1/2*E (sp: [0 1;0 0])
-                    % To get the coeffcient of 1/2, it is necessary to multiply 2^2.
-                end
-
+                Mo = M_tmp*obj.coef(ii)*obj.Ncoef(ii)*2^length(find(axis_tmp == 0));
+                    % Example
+                    % 2IxSz in 4-spin system (ISKL) (axis_tmp = [1 3 0 0])
+                    % 2IxSz = 2IxSz*4*1/2E*1/2E = Ncoef*2^2*Ix*Sz*1/2E*1/2E
+                    %
+                    % IpSz in 4-spin system (ISKL) (axis_tmp = [4 3 0 0])
+                    % IpSz = IpSz*4*1/2E*1/2E = Ncoef*2^2*Ip*Sz
+ 
                 if ii == 1
                    M_out = Mo; 
                 else
@@ -297,18 +301,22 @@ classdef PO
                 bracket_out = [];
 
                  if nargin <= 3
-                    spin_label_cell = {'I' 'S' 'K' 'L' 'M'};
-                  end                 
-                 % spin_label_cell = obj.spin_label;% Why did it work? When obj created?
-                 % This line should be used if spin_label has been set at properties (as a static).
-                
+                    spin_label_cell = {'I' 'S' 'K' 'L' 'M'}; % Default
+                  end
+
+                  if length(spin_label_cell) < spin_no % Abort spin_label_cell is not large enough.
+                    error('the size of spin_label_cell must be same as spin_no');
+                  end
+
+                  spin_label_cell = spin_label_cell(1:spin_no);% Adjust the size of spin_label_cell to spin_no. 
+
                 for ii = 1:max(size(sp_cell))
                     sp = sp_cell{ii};
 
                     axis_tmp = zeros(1,spin_no);
-                    % if sp is a character other than the labels in spin_lable,
-                    % then it is considered as a half unit operator because axis_tmp = [0 0 ...].
-                    % The out put is 1/2.
+                    % Initial state of axis_temp is 1/2E for all spins.
+                    % if sp is not listed in spin_lable,
+                    % a value in axis_tmp is kept as 0 then sp is considered as 1/2E.
 
                     for jj = 1:length(spin_label_cell)
                         spin_label_tmp = spin_label_cell{jj};
@@ -350,12 +358,11 @@ classdef PO
                 elseif isempty(find(axis_out == 1,1)) && isempty(find(axis_out == 2,1))% Raising/Lowering operator basis
                     basis_out = 'pmz';
                 else % Mixiture of Cartesian operator and Raising/Lowering operator basis
-                    msg = 'Error: XYZ-basis and +-Z basis are not mixed!!';
-                    error(msg);
+                    error('Error: Cartesian operator basis and Raising/Lowering operator basis should not be mixed!!');
                 end
 
                 obj = PO(); % spin_label is empty at this point
-                obj.axis = axis_out;% 1:x, 2:y, 3:z, 0: no type assgined
+                obj.axis = axis_out;% 1:x, 2:y, 3:z, 4:p, 5:m, 0: no type assgined
                 obj.coef = coef_out;% Coefficient for the product operator
                 obj.spin_label = spin_label_cell;
                 obj.bracket = bracket_out;% 1: put bracket if coefficient is a sum-form.
@@ -372,6 +379,23 @@ classdef PO
             axis_in = obj.axis;
             [~,IA,IC] = unique(axis_in,'rows');
 
+            % Example
+            % axis_in = [1 0 0; % Row 1
+            %           0 2 3;  % Row 2
+            %           1 0 0;  % Row 3
+            %           3 3 0;  % Row 4
+            %           0 2 3]; % Row 5
+            % IA shows IDs of unique rows.
+            % In this case, IA = [2 1 4]';
+            %
+            % IC is a tricky but this case IC = [2 1 2 3 1]'.
+            % Then,
+            % IC(1) = 2 means ROW 1 of axis_in corresponds to IA(2) = 1;
+            % IC(2) = 1 means ROW 2 of axis_in corresponds to IA(1) = 2;
+            % IC(3) = 2 means ROW 3 of axis_in corresponds to IA(2) = 1;
+            % IC(4) = 3 means ROW 4 of axis_in corresponds to IA(3) = 4;
+            % IC(5) = 1 means ROW 5 of axis_in corresponds to IA(1) = 2;
+
             coef_out = [];
             axis_out = [];
             bracket_out = [];
@@ -379,7 +403,13 @@ classdef PO
             for ii = 1:length(IA)
                IA_tmp = IA(ii);
                IC_tmp = find(IC == IC(IA_tmp));% IMPORTANT!!
-
+                % IA_tmp is an ID of a unique row in axis_in.
+                % Then find(IC == IC(IA_tmp)) searches IDs of rows in axis_in corresponding to the unique row.
+                % Example
+                % IA_tmp = IA(1) = 2. 
+                % IC(IA_tmp) = IC(2) = 1. 
+                % Then find(IC == IC(IA_tmp)) = find(IC == 1) = [2 5];
+                 
                axis_tmp = axis_in(IA_tmp,:);
 
                coef_tmp = sum(obj.coef(IC_tmp));
@@ -417,14 +447,14 @@ classdef PO
                 end
             end
 
-            % obj = PO(); To use spin_label from the original obj,
-            % PO() shoud not be used here.
+            % To use spin_label in the input obj,
+            % obj = PO() shoud not be used here.
 
             axis_out = axis_out(id_vec,:);
             coef_out = coef_out(id_vec,:);
             bracket_out = bracket_out(id_vec,:);
 
-            axis_out(axis_out == 0) = 9;% Replace 0 to 9 so for sorting
+            axis_out(axis_out == 0) = 9;% Replace 0 to 9 for sorting purpose
             [axis_sort, id_sort] = sortrows(axis_out,'ascend');
             axis_sort(axis_sort == 9) = 0;% Replace 9 to 0
             obj.axis = axis_sort;
@@ -451,53 +481,61 @@ classdef PO
             coef_out = [];
             for ii = 1:size(axis_in,1)
                 axis_tmp = axis_in(ii,:);
-        
-                % Conversion from Ix and Iy to Ip and Im
-                xn = length(find(axis_tmp == 1)); % Example: IxSyKx =>(Ip + Im)(Sp - Sm)(Kp + Km)
-                yn = length(find(axis_tmp == 2)); % => 2^2 * 2^1 = 8.
-                xyn = 2^(xn + yn);
-                axis_out_tmp = repmat(axis_tmp,xyn,1);
-                axis_out_tmp(axis_out_tmp == 1) = 0; % Remove Ix
-                axis_out_tmp(axis_out_tmp == 2) = 0; % Remove Iy
-                coef_out_tmp = ones(xyn,1); %
-        
-                dec = 0:xyn - 1;
-                bin_mat = de2bi(dec,(xn + yn),'left-msb');
-                bin_mat (bin_mat == 0) = 4;
-                bin_mat (bin_mat == 1) = 5;
-                % Creation of the pattern
-                % 4 4 4 
-                % 4 4 5
-                % 4 5 4
-                % 4 5 5
-                % 5 4 4
-                % 5 4 5
-                % 5 5 4
-                % 5 5 5
+                if isempty(find(axis_tmp == 1,1)) && isempty(find(axis_tmp == 2,1))% Iz, 2IzSz, 4IzSzKz,...
+                    axis_out_tmp = axis_tmp;
+                    coef_out_tmp = 1;
+                else
+                    % Conversion from Ix and Iy to Ip and Im
+                    xn = length(find(axis_tmp == 1)); % Example: IxSyKxMz =>(Ip + Im)(Sp - Sm)(Kp + Km)Mz
+                    yn = length(find(axis_tmp == 2)); % xn =2, yn = 1 => 2^(2+1) = 8 terms.
+                    xyn = 2^(xn + yn);
+                    axis_out_tmp = repmat(axis_tmp,xyn,1); % repmat([1 2 1 3],8,1)
+                    axis_out_tmp(axis_out_tmp == 1) = 0;   % Remove x operators
+                    axis_out_tmp(axis_out_tmp == 2) = 0;   % Remove y operators
+                    coef_out_tmp = ones(xyn,1);
+            
+                    dec = 0:xyn - 1;
+                    bin_mat = de2bi(dec,(xn + yn),'left-msb');
+                    bin_mat (bin_mat == 0) = 4;
+                    bin_mat (bin_mat == 1) = 5;
+                    % Creation of the pattern
+                    % If xn + yn = 3, there are 8 terms with using p and m.
+                    % The all combinations are
+                    % 4 4 4 
+                    % 4 4 5
+                    % 4 5 4
+                    % 4 5 5
+                    % 5 4 4
+                    % 5 4 5
+                    % 5 5 4
+                    % 5 5 5
 
-                int_count = 0;
-                for jj = 1:spin_no
-                    axis_v = axis_tmp(jj);
-                    if axis_v == 1 || axis_v == 2
-                        int_count = int_count + 1;
-                        bin_vec = bin_mat(:,int_count);
-                        axis_out_tmp(:,jj) = bin_vec;
+                    int_count = 0;
+                    for jj = 1:spin_no
+                        axis_v = axis_tmp(jj);
+                        if axis_v == 1 || axis_v == 2
+                            int_count = int_count + 1;
+                            bin_vec = bin_mat(:,int_count);
+                            axis_out_tmp(:,jj) = bin_vec;
 
-                        c_tmp = zeros(size(bin_vec));
-                        if axis_v == 1 % Ix = 1/2*Ip + 1/2*Im
-                            c_tmp(bin_vec == 4) = 1/2; % 
-                            c_tmp(bin_vec == 5) = 1/2;
-                        elseif axis_v == 2 % Iy = 1/(2i)*Ip - 1/(2i)*Im
-                            c_tmp(bin_vec == 4) = 1/(2*1i);
-                            c_tmp(bin_vec == 5) = -1/(2*1i);
+                            c_tmp = zeros(size(bin_vec));
+                            if axis_v == 1 % Ix = 1/2*Ip + 1/2*Im
+                                c_tmp(bin_vec == 4) = 1/2;
+                                c_tmp(bin_vec == 5) = 1/2;
+                            elseif axis_v == 2 % Iy = 1/(2i)*Ip - 1/(2i)*Im
+                                c_tmp(bin_vec == 4) = 1/(2*1i);
+                                c_tmp(bin_vec == 5) = -1/(2*1i);
+                            end
+                            coef_out_tmp = coef_out_tmp.*c_tmp;
                         end
-                        coef_out_tmp = coef_out_tmp.*c_tmp;
                     end
                 end
+
+                % Combine terms
                 axis_out = [axis_out;axis_out_tmp];
                 coef_out_tmp = coef_out_tmp*coef_in(ii)*Ncoef_in(ii);
                 coef_out = [coef_out;coef_out_tmp];
-            end
+            end % ii
         
             bracket_out = [];
             for ii = 1:length(coef_out)
@@ -513,6 +551,7 @@ classdef PO
             obj2.axis = axis_out;
             obj2.coef = coef_out;
             obj2.spin_label = obj.spin_label;
+            obj2.disp = obj.disp;
             obj2.bracket = bracket_out;% change the property of bracket later.
             obj2.basis = 'pmz';
             obj = CombPO(obj2);
@@ -537,44 +576,56 @@ classdef PO
             coef_out = [];
             for ii = 1:size(axis_in,1)
                 axis_tmp = axis_in(ii,:);
-        
-                % Conversion from Ix and Iy to Ip and Im
-                xn = length(find(axis_tmp == 4)); % Example: IxSyKx =>(Ip + Im)(Sp - Sm)(Kp + Km)
-                yn = length(find(axis_tmp == 5)); % => 2^2 * 2^1 = 8.
-                xyn = 2^(xn + yn);
-                axis_out_tmp = repmat(axis_tmp,xyn,1);
-                axis_out_tmp(axis_out_tmp == 4) = 0; % Remove Ip
-                axis_out_tmp(axis_out_tmp == 5) = 0; % Remove Im
-                coef_out_tmp = ones(xyn,1); %
-        
-                dec = 0:xyn - 1;
-                bin_mat = de2bi(dec,(xn + yn),'left-msb');
-                bin_mat (bin_mat == 0) = 2;
-                bin_mat (bin_mat == 1) = 1;
+                if isempty(find(axis_tmp == 4,1)) && isempty(find(axis_tmp == 5,1))% Iz, 2IzSz, 4IzSzKz,...
+                    axis_out_tmp = axis_tmp;
+                    coef_out_tmp = 1;
+                    xn = 0;
+                    yn = 0;
+                    zn = length(find(axis_tmp == 3));
 
-                int_count = 0;
-                for jj = 1:spin_no
-                    axis_v = axis_tmp(jj);
-                    if axis_v == 4 || axis_v == 5
-                        int_count = int_count + 1;
-                        bin_vec = bin_mat(:,int_count);
-                        axis_out_tmp(:,jj) = bin_vec;
+                else
+                    % Conversion from Ip and Im to Ix and Iy
+                    xn = length(find(axis_tmp == 4));
+                    yn = length(find(axis_tmp == 5));
+                    zn = length(find(axis_tmp == 3));
+                    xyn = 2^(xn + yn);
+                    axis_out_tmp = repmat(axis_tmp,xyn,1);
+                    axis_out_tmp(axis_out_tmp == 4) = 0; % Remove Ip
+                    axis_out_tmp(axis_out_tmp == 5) = 0; % Remove Im
+                    coef_out_tmp = ones(xyn,1);
+            
+                    dec = 0:xyn - 1;
+                    bin_mat = de2bi(dec,(xn + yn),'left-msb');
+                    bin_mat (bin_mat == 0) = 2;
+                    bin_mat (bin_mat == 1) = 1;
 
-                        c_tmp = zeros(size(bin_vec));
-                        if axis_v == 4
-                            c_tmp(bin_vec == 1) = 1;
-                            c_tmp(bin_vec == 2) = 1i;
-                        elseif axis_v == 5
-                            c_tmp(bin_vec == 1) = 1;
-                            c_tmp(bin_vec == 2) = -1i;
+                    int_count = 0;
+                    for jj = 1:spin_no
+                        axis_v = axis_tmp(jj);
+                        if axis_v == 4 || axis_v == 5
+                            int_count = int_count + 1;
+                            bin_vec = bin_mat(:,int_count);
+                            axis_out_tmp(:,jj) = bin_vec;
+
+                            c_tmp = zeros(size(bin_vec));
+                            if axis_v == 4
+                                c_tmp(bin_vec == 1) = 1;
+                                c_tmp(bin_vec == 2) = 1i;
+                            elseif axis_v == 5
+                                c_tmp(bin_vec == 1) = 1;
+                                c_tmp(bin_vec == 2) = -1i;
+                            end
+                            coef_out_tmp = coef_out_tmp.*c_tmp;
                         end
-                        coef_out_tmp = coef_out_tmp.*c_tmp;
                     end
                 end
                 axis_out = [axis_out;axis_out_tmp];
-                coef_out_tmp = coef_out_tmp*coef_in(ii)*Ncoef_in(ii)*(1/2)^(xn + yn - 1);
-                % IpSp => IxSx etc. created. Then Ncoef is calculated as 2 for IxSx. 
-                % Thus it is necessary to compensate the factor of 2 here as coef.
+                coef_out_tmp = coef_out_tmp*coef_in(ii)*Ncoef_in(ii)*(1/2)^(xn + yn +zn - 1);
+                % From 1*IpSpIz*1, IxSxIz IxSyIz etc. are created.
+                % Then Ncoef for IxSxIz in xyz-basis is calculated as 4 automatically. 
+                % To compensate 4 in Ncoef, it is necessary to apply (1/2)*(xn + yn + zn -1) to a new coef.
+                % In this case (1/2)*(xn + yn + zn -1) = (1/2)*(2 + 0 + 1 -1) = 1/4.
+                % This line is a main difference from the one in xyz2pmz().                    
                 coef_out = [coef_out;coef_out_tmp];
             end
         
@@ -592,6 +643,7 @@ classdef PO
             obj2.axis = axis_out;
             obj2.coef = coef_out;
             obj2.spin_label = obj.spin_label;
+            obj2.disp = obj.disp;
             obj2.bracket = bracket_out;% change the property of bracket later.
             obj2.basis = 'xyz';
             obj = CombPO(obj2);
@@ -794,9 +846,9 @@ classdef PO
                 q = q_cell{ii};
              
                 if contains(sp,'*')
-                    if length(sp) == 1% '*' applys pulse() to all spins.
+                    if length(sp) == 1 % '*' applys pulse() to all spins.
                         id_vec = 1:max(size(spin_label_cell));
-                    elseif length(sp) == 2% 'I*' applys pulse() to I1, I2, ... if spin_label is set {'I1' 'I2' ...}
+                    elseif length(sp) == 2 % 'I*' applys pulse() to I1, I2, ... if spin_label is set {'I1' 'I2' ...}
                         id_vec = find(contains(spin_label_cell,sp(1)));
                     end
 
@@ -820,7 +872,7 @@ classdef PO
             % sp: type of spin, character of spin ('I' or 'S' etc.) or
             % the order number of spin (1 for 'I', 2 for 'S' etc.).
             % q: flip angle (symbolic or double)
-            
+
             basis_org = 'xyz';
             if strcmp(obj.basis,'pmz')
                 obj =  pmz2xyz(obj);% Conversion to xyz
@@ -1365,6 +1417,8 @@ classdef PO
         % Display a property para_name in obj.
         % para_name is a string.
         % This function is useful to check a protected property.
+        % There may be a MATLAB-native method to check a protected property.
+
             para_out = eval(['obj.',para_name]);
             disp(para_out)
        end

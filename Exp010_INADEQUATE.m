@@ -6,6 +6,7 @@ close all
 syms oI oS t
 % OOP dot-style
 rho = PO(2,{'Iz' 'Sz'});
+% rho = xyz2pmz(rho);
 rho.dispPOtxt();
 
 States = 'sin';
