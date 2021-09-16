@@ -5,125 +5,43 @@
 % Developer   : Dr. Kosuke Ohgo
 % ------------------------------------------------------------------------
 %
-% ------------------------------------------------------------------------
-% Syntax
-% ------------------------------------------------------------------------
-%   obj = PO()
-%   obj = PO(spin_no,sp_cell,symcoef_cell) 
+% Please read the manual (PO_Manual.docx or PO_Manual.pdf) for detail.
 %
-% ------------------------------------------------------------------------
-% Properties
-% ------------------------------------------------------------------------
-%   obj.axis
-%   obj.coef
-%   obj.spin_label
-%   obj.disp 
-% ------------------------------------------------------------------------
-% properties (Access = protected)
-% ------------------------------------------------------------------------
-%   obj.bracket
+% MIT License
 %
-% ------------------------------------------------------------------------
-% Properties (Dependent)
-% ------------------------------------------------------------------------
-%   obj.Ncoef
-%   obj.txt
-%   obj.M
-%   obj.coherence
-% ------------------------------------------------------------------------
-% properties (Constant = true)
-% ------------------------------------------------------------------------
-%   obj.sqn
+% Copyright (c) 2021 Kosuke Ohgo
 %
-% ------------------------------------------------------------------------
-% Methods
-% ------------------------------------------------------------------------
-%   obj.pulse
-%       Description : 
-%       Syntax      : obj = pulse(obj,sp,ph,q)
-%       Syntax      : obj = obj.pulse(sp,ph,q)
+% Permission is hereby granted, free of charge, to any person obtaining a copy
+% of this software and associated documentation files (the "Software"), to deal
+% in the Software without restriction, including without limitation the rights
+% to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+% copies of the Software, and to permit persons to whom the Software is
+% furnished to do so, subject to the following conditions:
 %
-%   obj.simpulse
-%       Description : 
-%       Syntax      : obj = simpulse(obj,sp_cell,ph_cell,q_cell)
-%       Syntax      : obj = obj.simpulse(sp_cell,ph_cell,q_cell)
+% The above copyright notice and this permission notice shall be included in all
+% copies or substantial portions of the Software.
 %
-%   obj.cs
-%       Description : 
-%       Syntax      : obj = cs(obj,sp,q)
-%       Syntax      : obj = obj.cs(sp,q)
-%
-%   obj.simcs
-%       Description : 
-%       Syntax      : obj = simcs(obj,sp_cell,q_cell)
-%       Syntax      : obj = obj.simcs(sp_cell,q_cell)
-%
-%   obj.jc
-%       Description : 
-%       Syntax      : obj = jc(obj,sp,q)
-%       Syntax      : obj = obj.jc(sp,q)
-%
-%   obj.pulse_phshift
-%       Syntax      : obj = pulse_phshift(obj,sp,ph,q)
-%       Syntax      : obj = obj.pulse_phshift(sp,ph,q)
-%
-%   obj.simpulse_phshift
-%       Description : 
-%       Syntax      : obj = simpulse_phshift(obj,sp_cell,ph_cell,q_cell)
-%       Syntax      : obj = obj.simpulse_phshift(sp_cell,ph_cell,q_cell)
-%
-%   obj.dispPO
-%       Description : 
-%       Syntax      : dispPO(obj)
-%       Syntax      : obj.dispPO()
-%
-%   obj.dispPOtxt
-%       Description : 
-%       Syntax      : dispPOtxt(obj)
-%       Syntax      : obj.dispPOtxt()
-%
-%   obj.UrhoUinv
-%       Description : 
-%       Syntax      : obj = UrhoUinv(obj,H,q)
-%       Syntax      : obj = obj.UrhoUinv(H,q)
-%
-%   obj.CombPO
-%       Description : 
-%       Syntax      : obj = CombPO(obj)
-%       Syntax      : obj = obj.CombPO()
-%
-% ------------------------------------------------------------------------
-% Methods (Statics)
-% ------------------------------------------------------------------------
-%
-%   PO.phmod
-%       Description : 
-%       Syntax      : phout = PO.phmod(phx,ii)
-%
-%   PO.ph_num2str
-%       Description : 
-%       Syntax      : ph_s = PO.ph_num2str(ph_n)
-%
-%   PO.rec_coef
-%       Syntax      : coef = PO.rec_coef(ph)
-%
-%   PO.SigAmp
-%       Syntax      : a0_V = SigAmp(obj,sp,phR)
+% THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+% IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+% FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+% AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+% LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+% SOFTWARE.
 
 %%
 classdef PO    
     properties
         axis        % Showing the status of axis direction for each spin.
-                    % x:1 y:2 z:3
+                    % 1:x 2:y 3:z 4:p 5:m 0:1/2E
                     % The size of column corresponds to the number of spins.
 
-        coef        % Coefficients of terms (Symbolic) except for the 2^(N-1) coefficient
+        coef        % Coefficients of terms (Symbolic).
+                    % coef doesn't include the 2^(N-1) coefficient.
 
         spin_label  % Labels for spin1, 2, 3... stored in a cell. Default: {'I' 'S' 'K' 'L' 'M'}
 
         disp = 1    % Control the display of the applied method on the monitor. 1: On, 2: Off
-
-        % bracket % Binary value to indicate cases with (a+b) or (a-b) type coefficient (1: yes, 0: no)
 
     end
     
@@ -132,7 +50,7 @@ classdef PO
 
         basis   % String value to distinguish the basis-status in the calculations ('xyz' or 'pmz')
                 % Ideally it should be visible to users (but still protected).
-                % dispPara(obj,'basis') can be used to check this property.
+                % dispProp(obj,'basis') can be used to check this property.
     end
     
     properties (Dependent)
@@ -256,7 +174,8 @@ classdef PO
         end % get.M(obj)
         
         %% coherence_out = get.coherence(obj)
-        function coherence_out = get.coherence(obj)   % Populations and coherences of a density operator
+        function coherence_out = get.coherence(obj)   
+            % Populations and coherences of a density operator
             spin_no = size(obj.axis,2);
             coherence_out = PO.rho_box(spin_no);
             coherence_out(obj.M == 0) = 0;
@@ -357,7 +276,7 @@ classdef PO
                     basis_out = 'xyz';
                 elseif isempty(find(axis_out == 1,1)) && isempty(find(axis_out == 2,1))% Raising/Lowering operator basis
                     basis_out = 'pmz';
-                else % Mixiture of Cartesian operator and Raising/Lowering operator basis
+                else % Mixiture of Cartesian operator and Raising/Lowering operator bases
                     error('Error: Cartesian operator basis and Raising/Lowering operator basis should not be mixed!!');
                 end
 
@@ -426,8 +345,8 @@ classdef PO
                    bracket_tmp = 0;
                else
                    if length(char_dummy_p) > id_tmp && strcmp(char_dummy_p(id_tmp),'(')
-                       % if dummy_p is -a*dummy_c*(...), then the id_tmp
-                       % position of char_dummy_p should be '('.
+                       % if dummy_p is -a*dummy_c*(...), 
+                       % then the charcter at id_tmp of char_dummy_p should be '('.
                        bracket_tmp = 1;
                    else
                        bracket_tmp = 0;                   
@@ -447,7 +366,7 @@ classdef PO
                 end
             end
 
-            % To use spin_label in the input obj,
+            % To use spin_label and display in the input obj,
             % obj = PO() shoud not be used here.
 
             axis_out = axis_out(id_vec,:);
@@ -1411,18 +1330,18 @@ classdef PO
 
        end % commute
 
-       %% dispPara(obj, para_name)
-       function dispPara(obj, para_name)
-        % dispPara(obj, para_name)
-        % Display a property para_name in obj.
-        % para_name is a string.
+       %% dispProp(obj, PropertyName)
+       function dispProp(obj, PropertyName)
+        % dispProp(obj, PropertyName)
+        % Display a property PropertyName in obj.
+        % PropertyName is a string.
         % This function is useful to check a protected property.
         % There may be a MATLAB-native method to check a protected property.
 
-            para_out = eval(['obj.',para_name]);
-            disp(para_out)
+            prop_out = eval(['obj.',PropertyName]);
+            disp(prop_out)
        end
-       % dispPara
+       % dispProp
 
     end % methods
     
