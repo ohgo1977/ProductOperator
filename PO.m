@@ -5,7 +5,7 @@
 % Developer   : Dr. Kosuke Ohgo
 % ------------------------------------------------------------------------
 %
-% Please read the manual (PO_Manual.docx or PO_Manual.pdf) for detail.
+% Please read the manual (PO_Manual.docx or PO_Manual.pdf) for details.
 %
 % MIT License
 %
@@ -51,6 +51,10 @@ classdef PO
         basis   % String value to distinguish the basis-status in the calculations ('xyz' or 'pmz')
                 % Ideally it should be visible to users (but still protected).
                 % dispProp(obj,'basis') can be used to check this property.
+
+        simplifystep = 10
+                % Number of steps used for simplify() in CombPO().
+                % This prorperty can be changed from set_simplifystep().
     end
     
     properties (Dependent)
@@ -220,7 +224,7 @@ classdef PO
                 bracket_out = [];
 
                  if nargin <= 3
-                    spin_label_cell = {'I' 'S' 'K' 'L' 'M'}; % Default
+                    spin_label_cell = {'I' 'S' 'K' 'L' 'M'}; % Default spin_label
                   end
 
                   if length(spin_label_cell) < spin_no % Abort spin_label_cell is not large enough.
@@ -332,7 +336,7 @@ classdef PO
                axis_tmp = axis_in(IA_tmp,:);
 
                coef_tmp = sum(obj.coef(IC_tmp));
-               coef_tmp = simplify(coef_tmp);
+               coef_tmp = simplify(coef_tmp, 'Steps', obj.simplifystep);
       
                syms dummy_c
                dummy_p = dummy_c*coef_tmp;
@@ -466,11 +470,9 @@ classdef PO
                 end
             end
         
-            obj2 = PO();
+            obj2 = obj;
             obj2.axis = axis_out;
             obj2.coef = coef_out;
-            obj2.spin_label = obj.spin_label;
-            obj2.disp = obj.disp;
             obj2.bracket = bracket_out;% change the property of bracket later.
             obj2.basis = 'pmz';
             obj = CombPO(obj2);
@@ -558,11 +560,9 @@ classdef PO
                 end
             end
         
-            obj2 = PO();
+            obj2 = obj;
             obj2.axis = axis_out;
             obj2.coef = coef_out;
-            obj2.spin_label = obj.spin_label;
-            obj2.disp = obj.disp;
             obj2.bracket = bracket_out;% change the property of bracket later.
             obj2.basis = 'xyz';
             obj = CombPO(obj2);
@@ -1158,7 +1158,7 @@ classdef PO
        function pt = axis2pt(obj,axis_tmp)
            % pt = axis2pt(obj,axis_tmp)
            % axis_tmp is a row vector from rho.axis.
-           % obj is necessary to get spin_label.
+           % obj is necessary to get spin_label from it.
            %
            % Example:
            % axis_tmp = [1 1], pt = 'IxSx'. Note that pt doesn't include '2' for '2IxSx'.
@@ -1248,11 +1248,11 @@ classdef PO
                 for ii = 1:max(size(sp_cell))
                     sp = sp_cell{ii};
 
-                    axis_tmp = zeros(1,spin_no); % Store 
+                    axis_tmp = zeros(1,spin_no); % Empty vector 
                     for jj = 1:length(spin_label_cell)
 
                         spin_label_tmp = spin_label_cell{jj};
-                        if contains(sp,spin_label_tmp)
+                        if contains(sp,spin_label_tmp)% search sp in spin_label_cell
                             id_tmp = jj;% Column ID of axis, i.e. each spin-type
                             phase_s = sp(strfind(sp,spin_label_tmp) + length(spin_label_tmp));% Phase character
                             switch phase_s
@@ -1267,19 +1267,15 @@ classdef PO
 
                             if length(phase_id) == 1
                                     axis_tmp(:,id_tmp) = phase_id;
-                            % elseif length(phase_id) == 3% Wildcard for phase
-                            %         axis_tmp = repmat(axis_tmp,3,1);% Expand the row size of axis_tmp 3 times. 
-                            %         rate_tmp = size(axis_tmp,1)/3;%
-                            %         phase_id_vec = [1*ones(rate_tmp,1);2*ones(rate_tmp,1);3*ones(rate_tmp,1)];% phase_id_vec = [1 1 1... 2 2 2... 3 3 3...]'
-                            %         axis_tmp(:,id_tmp) = phase_id_vec;
                             elseif length(phase_id) == 5% Wildcard for phase
+                                rate_tmp = size(axis_tmp,1);%
                                 axis_tmp = repmat(axis_tmp,5,1);% Expand the row size of axis_tmp 5 times. 
-                                rate_tmp = size(axis_tmp,1)/5;%
                                 phase_id_vec = [1*ones(rate_tmp,1);...
                                                 2*ones(rate_tmp,1);...
                                                 3*ones(rate_tmp,1);...
                                                 4*ones(rate_tmp,1);...
-                                                5*ones(rate_tmp,1)];% phase_id_vec = [1 1 1... 2 2 2... 3 3 3...4 4 4...5 5 5...]'
+                                                5*ones(rate_tmp,1)];
+                                % phase_id_vec = [1 1 1... 2 2 2... 3 3 3...4 4 4...5 5 5...]'
                                 axis_tmp(:,id_tmp) = phase_id_vec;                            
                             end
                         end
@@ -1342,6 +1338,19 @@ classdef PO
             disp(prop_out)
        end
        % dispProp
+
+    %    function obj = changeProp(obj, PropertyName, para_in)
+    %         eval(['obj.',PropertyName, '= para_in;']);
+    %    end
+    %    % changeProp
+
+        %% obj = set_simplifystep(ojb,new_v)
+        function obj = set_simplifystep(obj,new_v)
+            % obj = set_simplifystep(ojb,new_v)
+            % Change the property simplifystep to a new value.
+            obj.simplifystep = new_v;
+        end
+        % set_simplifystep(ojb,new_v)
 
     end % methods
     

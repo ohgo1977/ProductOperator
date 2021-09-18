@@ -25,9 +25,10 @@ for ii = phid
     rho = PO(1,{'Iz'});% Initial State
     rho.dispPOtxt();
     rho = rho.pulse(1,ph1,1/2*pi);% 90-pulse
+
     rho = rho.cs(1,oI*t);% Chemical shift evolution
-    rho = rho.pulse(1,ph2,pi+d);% 180+d-pulse, where d indicates the miscalibration of 180-pulse
- %   rho = rho.pulse(1,ph2,pi);% 180-pulse
+    rho = rho.pulse(1,ph2,pi);% 180-pulse
+       % rho = rho.pulse(1,ph2,pi+d);% 180+d-pulse, where d indicates the miscalibration of 180-pulse
     rho = rho.cs(1,oI*t);% Chemical shift evolution
 
     [a0_V,rho_V] = rho.SigAmp('I',phR);% Detection
