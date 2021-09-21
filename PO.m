@@ -3,9 +3,12 @@
 % Description : Functions for Product Operator Formalism of spin-1/2
 % Requirement : MATLAB Symbolic Math Toolbox
 % Developer   : Dr. Kosuke Ohgo
-% ------------------------------------------------------------------------
+% ULR         : https://github.com/ohgo1977/ProductOperator
+% Version     : 1.0.0
 %
 % Please read the manual (PO_Manual.docx or PO_Manual.pdf) for details.
+%
+% ------------------------------------------------------------------------
 %
 % MIT License
 %
@@ -30,7 +33,8 @@
 % SOFTWARE.
 
 %%
-classdef PO    
+classdef PO
+    %%    
     properties
         axis        % Showing the status of axis direction for each spin.
                     % 1:x 2:y 3:z 4:p 5:m 0:1/2E
@@ -39,12 +43,14 @@ classdef PO
         coef        % Coefficients of terms (Symbolic).
                     % coef doesn't include the 2^(N-1) coefficient.
 
-        spin_label  % Labels for spin1, 2, 3... stored in a cell. Default: {'I' 'S' 'K' 'L' 'M'}
+        spin_label  % Labels for spin1, 2, 3... stored in a cell. 
+                    % Default: {'I' 'S' 'K' 'L' 'M'} defined in the method PO().
 
         disp = 1    % Control the display of the applied method on the monitor. 1: On, 2: Off
 
     end
     
+    %%
     properties (Access = protected)
         bracket % Binary value to indicate cases with (a+b) or (a-b) type coefficient (1: yes, 0: no)
 
@@ -57,6 +63,7 @@ classdef PO
                 % This prorperty can be changed from set_simplifystep().
     end
     
+    %%
     properties (Dependent)
         % Learn more about Dependent and getter function.
         % https://www.mathworks.com/help/matlab/matlab_oop/property-get-methods.html
@@ -67,13 +74,13 @@ classdef PO
         coherence   % Populations (diagonal) and coherences (off-diagonal) of a density operator
     end
     
+    %%
     properties (Constant = true)
         sqn = sym(1/2);% Spin Quantum Number
-     %   url = 'https://github.com/ohgo1977/ProductOperator';
-     %   version = '1.0.0';% Major.Minor.Patch
 
     end
-        
+    
+    %%
     methods
         %% Ncoef_cnst = get.Ncoef(obj)
         function Ncoef_cnst = get.Ncoef(obj)
@@ -84,7 +91,7 @@ classdef PO
                 % IxSx   => Ns = 2 => Ncoef = 2
                 % IxSxKx => Ns = 3 => Ncoef = 4
             elseif strcmp(obj.basis, 'pmz')% Raising/Lowering  operator basis
-                Ncoef_cnst = sym(ones(size(obj.axis,1),1));
+                Ncoef_cnst = sym(ones(size(obj.axis,1),1));% Ncoef = 1
             end
         end % get.Ncoef
         
@@ -134,7 +141,9 @@ classdef PO
                         end            
                     end
 
-                    if ~strcmp(char(coef_tmp),'0')% if coef_tmp ~= sym(0)
+                    if isempty(find(obj.coef ~= sym(0)))
+                        txt_out = '0';
+                    elseif ~strcmp(char(coef_tmp),'0')% if coef_tmp ~= sym(0)
                         if ii == 1% In the case of 1st term, no need to add '+'.
                             txt_out = [txt_out,ptc];% No Positive sign for 1st term
                         else
@@ -150,7 +159,7 @@ classdef PO
         function M_out = get.M(obj)
             % Create a Matrix representation.
             for ii = 1:size(obj.axis,1)
-                axis_tmp = obj.axis(ii,:);% should include the case with 0: 1/2E
+                axis_tmp = obj.axis(ii,:);
 
                 for jj = 1:length(axis_tmp)
                     Ma = obj.axis2M(axis_tmp(jj),obj.sqn); 
@@ -188,7 +197,7 @@ classdef PO
         %% obj = PO(spin_no,sp_cell,symcoef_cell,spin_label_cell)
         function obj = PO(spin_no,sp_cell,symcoef_cell,spin_label_cell) 
             % obj = PO(spin_no,sp_cell,symcoef_cell,spin_label_cell)
-            % This is a class constructor, obj should not be involved in argument.
+            % This is the class constructor, obj should not be involved in the argument.
             % https://www.mathworks.com/help/matlab/matlab_oop/class-constructor-methods.html
             %
             % spin_no: Number of spin types in the system.
@@ -228,7 +237,7 @@ classdef PO
                   end
 
                   if length(spin_label_cell) < spin_no % Abort spin_label_cell is not large enough.
-                    error('the size of spin_label_cell must be same as spin_no');
+                    error('the size of spin_label_cell must be same as 0r bigger than spin_no');
                   end
 
                   spin_label_cell = spin_label_cell(1:spin_no);% Adjust the size of spin_label_cell to spin_no. 
@@ -253,7 +262,7 @@ classdef PO
                                 case 'z', phase_id = 3;
                                 case 'p', phase_id = 4;
                                 case 'm', phase_id = 5;
-                                otherwise, phase_id = 0;
+                                otherwise, phase_id = 0;%Any unknown phase becomes 1/2E
                             end
                             axis_tmp(id_tmp) = phase_id;
                         end
@@ -297,8 +306,8 @@ classdef PO
         %% obj = CombPO(obj)
         function obj = CombPO(obj)
             % obj = CombPO(obj)
-            % Combine coeffcieints of same type of terms in a PO-class object.
-            % Also detect coefficients in which parentheses should be added and put a flag (obj.bracket).
+            % Combines coeffcieints of same type of terms in a PO-class object.
+            % Also detects coefficients in which parentheses should be added and puts a flag in obj.bracket.
             axis_in = obj.axis;
             [~,IA,IC] = unique(axis_in,'rows');
 
@@ -365,14 +374,16 @@ classdef PO
             % Remove terms with 0 coefficients
             id_vec = [];
             for ii = 1:length(coef_out)
-                if ~strcmp(char(coef_out(ii)),'0')
+                if isempty(find(coef_out ~= sym(0))) % Only zero values in coef_out 
+                    id_vec = 1;
+                    axis_out = [0 0 0];% Reset axis_out for 1/2E
+                    bracket_out = 0;
+                elseif ~strcmp(char(coef_out(ii)),'0') % Terms with non-zero coeffients.
                     id_vec = cat(1,id_vec,ii);
                 end
             end
-
             % To use spin_label and display in the input obj,
             % obj = PO() shoud not be used here.
-
             axis_out = axis_out(id_vec,:);
             coef_out = coef_out(id_vec,:);
             bracket_out = bracket_out(id_vec,:);
@@ -473,7 +484,7 @@ classdef PO
             obj2 = obj;
             obj2.axis = axis_out;
             obj2.coef = coef_out;
-            obj2.bracket = bracket_out;% change the property of bracket later.
+            obj2.bracket = bracket_out;
             obj2.basis = 'pmz';
             obj = CombPO(obj2);
         end
@@ -563,7 +574,7 @@ classdef PO
             obj2 = obj;
             obj2.axis = axis_out;
             obj2.coef = coef_out;
-            obj2.bracket = bracket_out;% change the property of bracket later.
+            obj2.bracket = bracket_out;
             obj2.basis = 'xyz';
             obj = CombPO(obj2);
         end
@@ -574,7 +585,7 @@ classdef PO
             % obj = UrhoUinv(obj,H,q)
             % Calculation of the evolution of rho under H based on the cyclic
             % commutations. No matrix calculation is used.
-            % obj, H: PO class objects
+            % obj, H: PO class objects with xyz-basis.
             % q: angle in radian (symbolic or double)
             
             % Master Table of Cyclic Commutation
@@ -659,8 +670,8 @@ classdef PO
                         coef_new = cat(1,coef_new,obj.coef(ii)*[cos(q); sign_tmp*sin(q)]);
                     end
 
-                else
-                    coef_new = cat(1,coef_new,obj.coef(ii));% No evolution.
+                else % axis_mask ~= 1, No evolution
+                    coef_new = cat(1,coef_new,obj.coef(ii));
                 end
             end
 
@@ -720,14 +731,14 @@ classdef PO
             axis_tmp(id_sp) = phase_id;
 
             H = PO();
-            H.axis = axis_tmp;% 1:x, 2:y, 3:z, 0: no type assgined
-            H.coef = coef_tmp;% Coefficient for the product operator
-            H.bracket = 0;% 1: put bracket if coefficient is a sum-form.
+            H.axis = axis_tmp;
+            H.coef = coef_tmp;
+            H.bracket = 0;
 
             obj = UrhoUinv(obj,H,q);
 
             if strcmp(basis_org,'pmz')
-                obj =  xyz2pmz(obj);% Conversion to pmz
+                obj =  xyz2pmz(obj);% Conversion to pmz if the input obj is with pmz-basis.
             end
 
             if isa(q,'sym') == 1
@@ -897,9 +908,9 @@ classdef PO
             end
             
             H = PO();
-            H.axis = axis_tmp;% 1:x, 2:y, 3:z, 0: no type assgined
-            H.coef = sym(1);% Coefficient for the product operator
-            H.bracket = 0;% 1: put bracket if coefficient is a sum-form.
+            H.axis = axis_tmp;
+            H.coef = sym(1);
+            H.bracket = 0;
 
             obj = UrhoUinv(obj,H,q);
 
@@ -1079,10 +1090,10 @@ classdef PO
        %% a0_V = SigAmp(obj,sp,phR)
        function [a0_V,rho_V] = SigAmp(obj,sp,phR)
            % a0_V = SigAmp(obj,sp,phR)
-           % Calculation of initial signal amplitudes in
-           % the equation
+           % Calculation of initial signal amplitudes (t=0) in the equation
            % s(t) = 2*i*(rho[-b](t) + rho[-a](t) + rho[b-](t) + rho[a-](t))*exp(-i*phrec)
            % Spin Dynamics (2nd Ed.), p.379.
+           %
            % Related topics: Spin Dynamics (2nd Ed.), p.262, p. 287, p. 371, p.379, pp.608-610.
            %
            % Example
@@ -1092,14 +1103,13 @@ classdef PO
 
             spin_label_cell = obj.spin_label;
 
-            % Observe Mx by Ix + Sx + ...
             if isa(sp,'double')
                 for ii = 1:length(sp)
                     sp_tmp = sp(ii); % double                   
                     sp_tmp = spin_label_cell{sp_tmp};% char 
-                    sp_x = [sp_tmp 'x'];% Ix, Sx, ... .
+                    sp_m = [sp_tmp 'm'];% Im, Sm, ... .
 
-                    ObsPO = PO(size(obj.axis,2),{sp_x});
+                    ObsPO = PO(size(obj.axis,2),{sp_m});
                     if ii == 1
                         obsPO_M = ObsPO.M;% Create obsPO_M
                     else
@@ -1113,9 +1123,9 @@ classdef PO
                     if contains(sp,spin_label_tmp)
                         ii_int = ii_int + 1;
                         sp_tmp = spin_label_tmp;% char 
-                        sp_x = [sp_tmp 'x'];% Ix, Sx, I1x, I2x,... .
+                        sp_m = [sp_tmp 'm'];% Im, Sm, ... .
     
-                        ObsPO = PO(size(obj.axis,2),{sp_x});
+                        ObsPO = PO(size(obj.axis,2),{sp_m});
                         if ii_int == 1
                             obsPO_M = ObsPO.M;% Create obsPO_M
                         else
@@ -1124,25 +1134,17 @@ classdef PO
                     end
                 end
             end
-            
-            a0_M = obj.M.*(2*tril(obsPO_M));
+
+            a0_M = obj.M.*obsPO_M;            
             % This should be Hadamard product
-            % Do not describe as a0_M = obj.M.*2*tril(obsPO_M)!!
-            % This description returns 2*obj.M*tril8obsPO_M.
-            %
-            % tril(Ix.M + Sx.M + ...) is I-.M + S-.M + ... where I-, S-, ... are down-shift operators.
-            % Positions of the non-zero components (this case 1) in down-shift oeperators correspond to that of (-1)-quantum coherences in rho.
-            % Thus, rho.M.*(2*tril(Ix.M + Sx.M + ...)) extracts only (-1)-quantum coherence components in rho, 
-            % i.e., tril(Ix.M + Sx.M + ...) works as a mask.
-            %
-            % Since pmz basis operators can be used, this code may be written.
+            % rho.M.*(Im.M + Sm.M + ...) extracts only (-1)-quantum coherence components in rho, 
+            % i.e., (Im.M + Sm.M + ...) works as a mask.
             
             a0_V = reshape(a0_M,1,numel(a0_M));
             id_tmp = a0_V ~= sym(0);
             a0_V = a0_V(id_tmp);
             a0_V = 2*1i*PO.rec_coef(phR)*a0_V;
             
-            % syms rho [size(a0_M)] => rho1_2, rho2_2, ....
             rho = obj.coherence;
             rho_V = reshape(rho,1,numel(rho));
             rho_V = rho_V(id_tmp);
@@ -1316,11 +1318,10 @@ classdef PO
             obj3 = UrhoUinv(obj2,obj1,pi/2);
 
             if isempty(find(obj1.M - obj3.M ~= 0, 1))% obj1 == obj3
-                % obj3 = PO(size(obj1.axis,2),{'1'},{sym(0)});
+                obj3 = PO(size(obj1.axis,2),{'1'},{sym(0)});
                 fprintf(1,'They commutate\n')
             else
-%                 obj3_tmp.coef = sym(1i);
-                obj3.coef = obj3.coef*1i;
+                obj3.coef = obj3.coef*sym(1i);
                 obj3 = CombPO(obj3);
             end
 
@@ -1400,7 +1401,11 @@ classdef PO
        function coef = rec_coef(ph)
         % coef = rec_coef(ph)
         % ph is a quadrature phase ('x','X',0,'y','Y',1,...)
-        % the coef = exp(-1i*ph) = cos(ph) -1i*sin(ph)
+        % then coef = exp(-1i*ph) = cos(ph) -1i*sin(ph)
+        % coef(0)      =  1
+        % coef(pi/2)   = -1i
+        % coef(pi)     = -1
+        % coef(pi*3/2) =  1i
         % Spin Dynamics (2nd Ed.), p.287.
             if strcmp(ph,'x')==1||strcmp(ph,'X')==1||(isa(ph,'double')&&ph == 0)
                 coef = 1;
