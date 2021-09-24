@@ -6,7 +6,7 @@
 % ULR         : https://github.com/ohgo1977/ProductOperator
 % Version     : 1.0.0
 %
-% Please read the manual (PO_Manual.docx or PO_Manual.pdf) for details.
+% Please read the manual (PO_Manual.pdf) for details.
 %
 % ------------------------------------------------------------------------
 %
@@ -38,9 +38,9 @@ classdef PO
     properties
         axis        % Showing the status of axis direction for each spin.
                     % 1:x 2:y 3:z 4:p 5:m 0:1/2E
-                    % The size of column corresponds to the number of spins.
+                    % The column size corresponds to the number of spin types in the system.
 
-        coef        % Coefficients of terms (Symbolic).
+        coef        % Coefficients of product operators (Symbolic).
                     % coef doesn't include the 2^(N-1) coefficient.
 
         spin_label  % Labels for spin1, 2, 3... stored in a cell. 
@@ -58,9 +58,9 @@ classdef PO
                 % Ideally it should be visible to users (but still protected).
                 % dispProp(obj,'basis') can be used to check this property.
 
-        simplifystep = 10
+        SimplifySteps = 10
                 % Number of steps used for simplify() in CombPO().
-                % This prorperty can be changed from set_simplifystep().
+                % This prorperty can be changed from set_SimplifySteps().
     end
     
     %%
@@ -97,60 +97,62 @@ classdef PO
         
         %% txt_out = get.txt(obj)
         function txt_out = get.txt(obj)
-            txt_out = '';
-            for ii = 1:length(obj.coef)
-                axis_tmp = obj.axis(ii,:);
-                Ncoef_tmp = obj.Ncoef(ii);
-                coef_tmp = obj.coef(ii);
-                bracket_tmp = obj.bracket(ii);
+            if isempty(find(obj.coef ~= sym(0),1))% If all coef values are zero.
+                txt_out = '0';
+            else
+                txt_out = '';
+                for ii = 1:length(obj.coef)
+                    axis_tmp = obj.axis(ii,:);
+                    Ncoef_tmp = obj.Ncoef(ii);
+                    coef_tmp = obj.coef(ii);
+                    bracket_tmp = obj.bracket(ii);
 
-                % Text of Product Operator
-                pt = axis2pt(obj,axis_tmp);
-                
-                % Remove '1' from single-type P.O. (N = 1 for 2^(N-1))
-                if ~strcmp(char(Ncoef_tmp),'1')
-                    ptc = strcat(char(Ncoef_tmp),pt);
-                else
-                    ptc = pt;
-                end
+                    % Text of Product Operator
+                    pt = axis2pt(obj,axis_tmp);
+                    
+                    % Remove '1' from single-type P.O. (N = 1 for 2^(N-1))
+                    if ~strcmp(char(Ncoef_tmp),'1')
+                        ptc = strcat(char(Ncoef_tmp),pt);
+                    else
+                        ptc = pt;
+                    end
 
-                % Adjustment of sign and Creation of txt
-                subexpr = children(coef_tmp);
-                if sign(subexpr{end}) == -1 || sign(coef_tmp) == -1 || sign(subexpr{end}) == -1i || ... 
-                 (length(subexpr) == 2 && sign(subexpr{1}) == -1 && sign(subexpr{2}) == 1i)
-                    % Case of negative values: change the position of '-'.
-                    % 1st condition: Symbols with negative sign such as -q, -1/2*q, etc..
-                    % 2nd condition: symbolic negative values such as sym(-2).
-                    % 3rd condition: symbols with negative imaginary such as -a*1i
-                    % 4th condition: symbolic negative imaginary valuess such as -5*1i
-                    if ~strcmp(char(coef_tmp),'-1')% if coef_tmp = sym(-1), it is not required to display -1 as a coeffcieint.
-                        if bracket_tmp == 1
-                            ptc = strcat(ptc,'*','(',char(-1*coef_tmp),')');% Add bracket for 'a-b'-type coefficient
-                        else
-                            ptc = strcat(ptc,'*',char(-1*coef_tmp));
+                    % Adjustment of sign and Creation of txt
+                    subexpr = children(coef_tmp);
+                    if sign(subexpr{end}) == -1 || sign(coef_tmp) == -1 || sign(subexpr{end}) == -1i || ... 
+                    (length(subexpr) == 2 && sign(subexpr{1}) == -1 && sign(subexpr{2}) == 1i)
+                        % Case of negative values: change the position of '-'.
+                        % 1st condition: Symbols with negative sign such as -q, -1/2*q, etc..
+                        % 2nd condition: symbolic negative values such as sym(-2).
+                        % 3rd condition: symbols with negative imaginary such as -a*1i
+                        % 4th condition: symbolic negative imaginary valuess such as -5*1i
+                        if ~strcmp(char(coef_tmp),'-1')% if coef_tmp = sym(-1), it is not required to display -1 as a coeffcieint.
+                            if bracket_tmp == 1
+                                ptc = strcat(ptc,'*','(',char(-1*coef_tmp),')');% Add bracket for 'a-b'-type coefficient
+                            else
+                                ptc = strcat(ptc,'*',char(-1*coef_tmp));
+                            end
                         end
-                    end
-                    txt_out = [txt_out,' ','-',' ',ptc];% Add Negative sign in the text
+                        txt_out = [txt_out,' ','-',' ',ptc];% Add Negative sign in the text
 
-                else % Symbols with positive sign such as q in addtion to symbolic positive numbers.
-                    if ~strcmp(char(coef_tmp),'1')% if coef_tmp = sym(1), it is not required to display 1 as a coeffcieint.
-                        if bracket_tmp == 1
-                            ptc = strcat(ptc,'*','(',char(coef_tmp),')');% Add bracket for 'a+b'-type coefficient
-                        else
-                            ptc = strcat(ptc,'*',char(coef_tmp));
-                        end            
-                    end
-
-                    if isempty(find(obj.coef ~= sym(0)))
-                        txt_out = '0';
-                    elseif ~strcmp(char(coef_tmp),'0')% if coef_tmp ~= sym(0)
-                        if ii == 1% In the case of 1st term, no need to add '+'.
-                            txt_out = [txt_out,ptc];% No Positive sign for 1st term
-                        else
-                            txt_out = [txt_out,' ','+',' ',ptc];
+                    else % Symbols with positive sign such as q in addtion to symbolic positive numbers.
+                        if ~strcmp(char(coef_tmp),'1')% if coef_tmp = sym(1), it is not required to display 1 as a coeffcieint.
+                            if bracket_tmp == 1
+                                ptc = strcat(ptc,'*','(',char(coef_tmp),')');% Add bracket for 'a+b'-type coefficient
+                            else
+                                ptc = strcat(ptc,'*',char(coef_tmp));
+                            end            
                         end
-                    end
 
+                        if ~strcmp(char(coef_tmp),'0')% if coef_tmp ~= sym(0)
+                            if ii == 1% In the case of 1st term, no need to add '+'.
+                                txt_out = [txt_out,ptc];% No Positive sign for 1st term
+                            else
+                                txt_out = [txt_out,' ','+',' ',ptc];
+                            end
+                        end
+
+                    end
                 end
             end
         end  % get.txt
@@ -237,7 +239,7 @@ classdef PO
                   end
 
                   if length(spin_label_cell) < spin_no % Abort spin_label_cell is not large enough.
-                    error('the size of spin_label_cell must be same as 0r bigger than spin_no');
+                    error('the size of spin_label_cell must be same as or bigger than spin_no');
                   end
 
                   spin_label_cell = spin_label_cell(1:spin_no);% Adjust the size of spin_label_cell to spin_no. 
@@ -303,14 +305,16 @@ classdef PO
             end
         end % PO
         
-        %% obj = CombPO(obj)
+        %%obj = CombPO(obj)
         function obj = CombPO(obj)
             % obj = CombPO(obj)
             % Combines coeffcieints of same type of terms in a PO-class object.
             % Also detects coefficients in which parentheses should be added and puts a flag in obj.bracket.
+        
+            % tic;
             axis_in = obj.axis;
             [~,IA,IC] = unique(axis_in,'rows');
-
+        
             % Example
             % axis_in = [1 0 0; % Row 1
             %           0 2 3;  % Row 2
@@ -327,11 +331,13 @@ classdef PO
             % IC(3) = 2 means ROW 3 of axis_in corresponds to IA(2) = 1;
             % IC(4) = 3 means ROW 4 of axis_in corresponds to IA(3) = 4;
             % IC(5) = 1 means ROW 5 of axis_in corresponds to IA(1) = 2;
-
-            coef_out = [];
-            axis_out = [];
-            bracket_out = [];
-
+        
+            coef_out = sym(zeros(length(IA),1));
+            axis_out = zeros(length(IA),size(axis_in,2));
+            bracket_out = zeros(length(IA),1);
+            % et0 = toc;
+        
+            % tic;
             for ii = 1:length(IA)
                IA_tmp = IA(ii);
                IC_tmp = find(IC == IC(IA_tmp));% IMPORTANT!!
@@ -341,64 +347,83 @@ classdef PO
                 % IA_tmp = IA(1) = 2. 
                 % IC(IA_tmp) = IC(2) = 1. 
                 % Then find(IC == IC(IA_tmp)) = find(IC == 1) = [2 5];
-                 
-               axis_tmp = axis_in(IA_tmp,:);
-
-               coef_tmp = sum(obj.coef(IC_tmp));
-               coef_tmp = simplify(coef_tmp, 'Steps', obj.simplifystep);
-      
-               syms dummy_c
-               dummy_p = dummy_c*coef_tmp;
-               
-               char_dummy_p = char(dummy_p);
-               char_dummy_c = char(dummy_c);
-               id_tmp = strfind(char_dummy_p,char(dummy_c))+length(char_dummy_c)+1;
-
-               if coef_tmp == sym(0)% Special case: coef_tmp = sym(0)
-                   bracket_tmp = 0;
-               else
-                   if length(char_dummy_p) > id_tmp && strcmp(char_dummy_p(id_tmp),'(')
-                       % if dummy_p is -a*dummy_c*(...), 
-                       % then the charcter at id_tmp of char_dummy_p should be '('.
-                       bracket_tmp = 1;
-                   else
-                       bracket_tmp = 0;                   
-                   end
-               end
-
-               axis_out = cat(1,axis_out,axis_tmp);
-               coef_out = cat(1,coef_out,coef_tmp);
-               bracket_out = cat(1,bracket_out,bracket_tmp);
+            
+                axis_out(ii,:) = axis_in(IA_tmp,:);
+                coef_out(ii) = sum(obj.coef(IC_tmp));     
             end
+            % et1 = toc;
 
-            % Remove terms with 0 coefficients
-            id_vec = [];
+            % tic;
+            coef_out = simplify(coef_out, 'Steps', obj.SimplifySteps);% Simplify in one-step.
+            % et2 = toc;
+
+            % tic;
+            syms A_dummy % Use "A" as a first charcter so that A_dummy comes before other alphabets.
+                         % High time-cost; This line should be out of the loop. 
+            dummy_p_mat = A_dummy*coef_out;
+            char_A_dummy = char(A_dummy);
+
             for ii = 1:length(coef_out)
-                if isempty(find(coef_out ~= sym(0))) % Only zero values in coef_out 
-                    id_vec = 1;
-                    axis_out = [0 0 0];% Reset axis_out for 1/2E
-                    bracket_out = 0;
-                elseif ~strcmp(char(coef_out(ii)),'0') % Terms with non-zero coeffients.
-                    id_vec = cat(1,id_vec,ii);
+                coef_tmp = coef_out(ii);
+                dummy_p = dummy_p_mat(ii); % dummy_p = A_dummy*coef_tmp
+                char_dummy_p = char(dummy_p);
+                id_tmp = strfind(char_dummy_p,char(A_dummy)) + length(char_A_dummy) + 1;
+        
+                if coef_tmp == sym(0)% Special case: coef_tmp = sym(0)
+                    bracket_tmp = 0;
+                else
+                    if length(char_dummy_p) > id_tmp && strcmp(char_dummy_p(id_tmp),'(')
+                        % 1st condition is the case with coef_tmp = sym(1)
+                        % if dummy_p = -3*A_dummy*(...), 
+                        % then the charcter at id_tmp of char_dummy_p should be '('.
+                        bracket_tmp = 1;
+                    else
+                        bracket_tmp = 0;                   
+                    end
                 end
+                bracket_out(ii) = bracket_tmp;
             end
+            % et3 = toc;
+
+            % tic;
+            % Remove terms with 0 coefficients
+            if isempty(find(coef_out ~= sym(0),1)) % Only zero values in coef_out, then set as 0*1/2E. 
+                id_vec = 1;
+                axis_out = zeros(1,size(axis_in,2));% Reset axis_out for 1/2E
+                bracket_out = 0;
+            else
+                id_vec = find(coef_out ~= sym(0));
+            end
+            % et4 = toc;
+        
+            % tic;
             % To use spin_label and display in the input obj,
             % obj = PO() shoud not be used here.
             axis_out = axis_out(id_vec,:);
             coef_out = coef_out(id_vec,:);
             bracket_out = bracket_out(id_vec,:);
-
+        
             axis_out(axis_out == 0) = 9;% Replace 0 to 9 for sorting purpose
             [axis_sort, id_sort] = sortrows(axis_out,'ascend');
             axis_sort(axis_sort == 9) = 0;% Replace 9 to 0
             obj.axis = axis_sort;
             obj.coef = coef_out(id_sort,:);
             obj.bracket = bracket_out(id_sort,:);
+            % et5 = toc;
 
+            % et_total = et0 + et1 + et2 + et3 + et4 + et5;
+            % fprintf(1,'et0:%5.1f %% %5.0f ms\n',et0/et_total*100,1000*et0)
+            % fprintf(1,'et1:%5.1f %% %5.0f ms\n',et1/et_total*100,1000*et1)
+            % fprintf(1,'et2:%5.1f %% %5.0f ms\n',et2/et_total*100,1000*et2)
+            % fprintf(1,'et3:%5.1f %% %5.0f ms\n',et3/et_total*100,1000*et3)
+            % fprintf(1,'et4:%5.1f %% %5.0f ms\n',et4/et_total*100,1000*et4)
+            % fprintf(1,'et5:%5.1f %% %5.0f ms\n',et5/et_total*100,1000*et5)
+            % fprintf(1,'et_CombPO : %5.0f ms\n',1000*et_total)
+            % fprintf(1,'\n');
         end %CombPO
 
         % obj = xyz2pmz(obj)
-        function obj = xyz2pmz(obj);
+        function obj = xyz2pmz(obj)
             % obj = xyz2pmz(obj)
             % conversion from Cartesian operator basis to lowring/raising operator basis
 
@@ -491,7 +516,7 @@ classdef PO
         % xyz2pmz
 
         % obj = pmz2xyz(obj)
-        function obj = pmz2xyz(obj);
+        function obj = pmz2xyz(obj)
             % obj = xyz2pmz(obj)
             % conversion from lowring/raising operator basis to Cartesian operator basis.
 
@@ -603,6 +628,7 @@ classdef PO
             % If C is 0, no actions
             % If C is a negative value, change the sign of PO.coef.
 
+            % tic;
             if strcmp(obj.basis,'pmz') || strcmp(H.basis,'pmz')
                 error('The basis of the object should be xyz')
             end
@@ -617,13 +643,27 @@ classdef PO
             % Calculation of new density operator evolved under a Hamiltonian
             axis_new = [];
             coef_new = [];
+            H_axis = H.axis;
+
+            % type_mask_mat = (obj.axis.*H_axis) ~= 0;% It seems that H_axis can be used instead of H_axis_mat
+            % axis_diff_mat = obj.axis ~= H_axis;
+            % axis_mask_mat = type_mask_mat.*axis_diff_mat;
+            % axis_mask_vec = sum(axis_mask_mat,2);
+
+            % H_axis_mat = repmat(H_axis,size(obj.axis,1),1);
+            % type_mask_mat = (obj.axis.*H_axis_mat) ~= 0;% It seems that H_axis can be used instead of H_axis_mat
+            % axis_diff_mat = obj.axis ~= H_axis_mat;
+            % axis_mask_mat = type_mask_mat.*axis_diff_mat;
+            % axis_mask_vec = sum(axis_mask_mat,2);
+
             for ii = 1:length(obj.coef)% For each term of rho
                 rho_axis = obj.axis(ii,:);
-                H_axis = H.axis;
-                type_mask_vec = (rho_axis.*H_axis)~=0;% Check how many spin types get matched, matched: 1, unmatched: 0
+                type_mask_vec = (rho_axis.*H_axis) ~= 0;% Check how many spin types get matched, matched: 1, unmatched: 0
                 axis_diff_vec = rho_axis ~= H_axis;% Check the difference of the direction of each spin type
                 axis_mask_vec = type_mask_vec.*axis_diff_vec;
                 axis_mask = sum(axis_mask_vec);
+                % axis_mask = axis_mask_vec(ii);
+
                 % The cases of axis_mask = 1 means
                 % there is at least one match of spin types between H and rho
                 % and
@@ -678,6 +718,10 @@ classdef PO
             obj.axis = axis_new;
             obj.coef = coef_new;
             obj.bracket = zeros(size(obj.coef));
+
+            % et = toc;
+            % fprintf(1,'et_UrhoUinv : %5.0f ms\n',1000*et)
+            % fprintf(1,'\n');
 
             obj = CombPO(obj);
         end % UrhoUinv
@@ -960,17 +1004,18 @@ classdef PO
        % dispPO(rho) displays
        % 1  Ix   cos(q)
        % 2 2IySz sin(q)
+            fprintf(1,'\n');
        
-           for ii = 1:size(obj.axis,1)
-               axis_tmp = obj.axis(ii,:);
-               pt = axis2pt(obj,axis_tmp);
-               if strcmp(char(obj.Ncoef(ii)),'1')
-                   fprintf(1,'%4d%5s%-10s %s\n',ii,'',pt,char(obj.coef(ii)));
-               else
-                   fprintf(1,'%4d%5s%-10s %s\n',ii,char(obj.Ncoef(ii)),pt,char(obj.coef(ii)));                   
-               end
-           end
-           fprintf(1,'\n');
+            for ii = 1:size(obj.axis,1)
+                axis_tmp = obj.axis(ii,:);
+                pt = axis2pt(obj,axis_tmp);
+                if strcmp(char(obj.Ncoef(ii)),'1')
+                    fprintf(1,'%4d%5s%-10s %s\n',ii,'',pt,char(obj.coef(ii)));
+                else
+                    fprintf(1,'%4d%5s%-10s %s\n',ii,char(obj.Ncoef(ii)),pt,char(obj.coef(ii)));                   
+                end
+            end
+            fprintf(1,'\n');
        end % dispPO
        
         %% obj = pulse_phshift(obj,sp,ph,q)
@@ -1025,7 +1070,7 @@ classdef PO
                 end
             else
                 if isa(ph,'sym') == 1
-                    s_out = sprintf('Pulse: %s%4d%s',spin_label_cell{id_sp},round(q/pi*180),char(ph));
+                    s_out = sprintf('Pulse: %s%4d %s',spin_label_cell{id_sp},round(q/pi*180),char(ph));
                 else
                     s_out = sprintf('Pulse: %s%4d%4d',spin_label_cell{id_sp},round(q/pi*180),round(ph/pi*180));
                 end
@@ -1107,9 +1152,9 @@ classdef PO
                 for ii = 1:length(sp)
                     sp_tmp = sp(ii); % double                   
                     sp_tmp = spin_label_cell{sp_tmp};% char 
-                    sp_m = [sp_tmp 'm'];% Im, Sm, ... .
+                    sp_m = [sp_tmp 'm'];% sp_m = 'ImSm ...'.
 
-                    ObsPO = PO(size(obj.axis,2),{sp_m});
+                    ObsPO = PO(size(obj.axis,2),{sp_m},{sym(1)},spin_label_cell);
                     if ii == 1
                         obsPO_M = ObsPO.M;% Create obsPO_M
                     else
@@ -1125,7 +1170,7 @@ classdef PO
                         sp_tmp = spin_label_tmp;% char 
                         sp_m = [sp_tmp 'm'];% Im, Sm, ... .
     
-                        ObsPO = PO(size(obj.axis,2),{sp_m});
+                        ObsPO = PO(size(obj.axis,2),{sp_m},{sym(1)},spin_label_cell);
                         if ii_int == 1
                             obsPO_M = ObsPO.M;% Create obsPO_M
                         else
@@ -1140,8 +1185,11 @@ classdef PO
             % rho.M.*(Im.M + Sm.M + ...) extracts only (-1)-quantum coherence components in rho, 
             % i.e., (Im.M + Sm.M + ...) works as a mask.
             
+            obsPO_V = reshape(obsPO_M,1,numel(obsPO_M));
+            id_tmp = obsPO_V ~= sym(0);
+
             a0_V = reshape(a0_M,1,numel(a0_M));
-            id_tmp = a0_V ~= sym(0);
+            % id_tmp = a0_V ~= sym(0);
             a0_V = a0_V(id_tmp);
             a0_V = 2*1i*PO.rec_coef(phR)*a0_V;
             
@@ -1155,6 +1203,8 @@ classdef PO
             end
             
        end % SigAmp
+
+       
        
        %% pt = axis2pt(obj,axis_tmp)
        function pt = axis2pt(obj,axis_tmp)
@@ -1345,13 +1395,13 @@ classdef PO
     %    end
     %    % changeProp
 
-        %% obj = set_simplifystep(ojb,new_v)
-        function obj = set_simplifystep(obj,new_v)
-            % obj = set_simplifystep(ojb,new_v)
-            % Change the property simplifystep to a new value.
-            obj.simplifystep = new_v;
+        %% obj = set_SimplifySteps(ojb,new_v)
+        function obj = set_SimplifySteps(obj,new_v)
+            % obj = set_SimplifySteps(ojb,new_v)
+            % Change the property SimplifySteps to a new value.
+            obj.SimplifySteps = new_v;
         end
-        % set_simplifystep(ojb,new_v)
+        % set_SimplifySteps(ojb,new_v)
 
     end % methods
     
