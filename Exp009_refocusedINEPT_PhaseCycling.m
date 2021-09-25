@@ -52,6 +52,8 @@ for ii = phid
     rho = rho.simpulse({'I' 'S'},{ph7 ph6},{pi pi});        % I,S 180 pulses
     rho = rho.jc('IS',pi*J*2*t2);                           % J-coupling evolution
 
+    dispPO(rho)
+
     [a0_V, rho_V] = rho.SigAmp('S',phR); % Detection
 
     a0_M = cat(1,a0_M,a0_V);

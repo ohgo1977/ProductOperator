@@ -33,7 +33,8 @@
 % SOFTWARE.
 
 %%
-classdef PO
+classdef (InferiorClasses = {?sym}) PO
+% Override some operators of sym class
     %%    
     properties
         axis        % Showing the status of axis direction for each spin.
@@ -196,9 +197,9 @@ classdef PO
             coherence_out(obj.M == 0) = 0;
         end
 
-        %% obj = PO(spin_no,sp_cell,symcoef_cell,spin_label_cell)
-        function obj = PO(spin_no,sp_cell,symcoef_cell,spin_label_cell) 
-            % obj = PO(spin_no,sp_cell,symcoef_cell,spin_label_cell)
+        %% obj = PO(spin_no,sp_cell,coef_cell,spin_label_cell)
+        function obj = PO(spin_no,sp_cell,coef_cell,spin_label_cell) 
+            % obj = PO(spin_no,sp_cell,coef_cell,spin_label_cell)
             % This is the class constructor, obj should not be involved in the argument.
             % https://www.mathworks.com/help/matlab/matlab_oop/class-constructor-methods.html
             %
@@ -211,12 +212,12 @@ classdef PO
             % Do not put 2^(N-1) coefficients (such as '2' for 2IySz)
             % Each term should have characters of spin and phase.
             %
-            % symcoef_cell: Assignment of coefficients for sp_cell.
+            % coef_cell: Assignment of coefficients for sp_cell.
             % If only spin_no and sp_cell are input, sym(1) is automatically assigned for each term.
             % Example
             % sym q
             % {cos(q) sin(q)}
-            % Do not include 2^(N-1) coefficients in symcoef_cell.
+            % Do not include 2^(N-1) coefficients in coef_cell.
             %
             % spin_label_cell: Labels for spin types
             % If spin_label_cell is not input, {'I' 'S' 'K' 'L' 'M'} is used.
@@ -273,7 +274,7 @@ classdef PO
                    axis_out = cat(1,axis_out,axis_tmp);
 
                    if nargin > 2
-                       symcoef = symcoef_cell{ii};
+                        symcoef = sym(coef_cell{ii});
                    else
                        symcoef = sym(1);
                    end
@@ -1299,18 +1300,18 @@ classdef PO
             end
             et9 = toc;
 
-            et_total = et1 + et2 + et3 + et4 + et5 + et6 + et7 + et8 + et9;
-            fprintf(1,'et1:%5.1f %% %5.0f ms\n',et1/et_total*100,1000*et1)
-            fprintf(1,'et2:%5.1f %% %5.0f ms\n',et2/et_total*100,1000*et2)
-            fprintf(1,'et3:%5.1f %% %5.0f ms\n',et3/et_total*100,1000*et3)
-            fprintf(1,'et4:%5.1f %% %5.0f ms\n',et4/et_total*100,1000*et4)
-            fprintf(1,'et5:%5.1f %% %5.0f ms\n',et5/et_total*100,1000*et5)
-            fprintf(1,'et6:%5.1f %% %5.0f ms\n',et6/et_total*100,1000*et6)
-            fprintf(1,'et7:%5.1f %% %5.0f ms\n',et7/et_total*100,1000*et7)
-            fprintf(1,'et8:%5.1f %% %5.0f ms\n',et8/et_total*100,1000*et8)
-            fprintf(1,'et9:%5.1f %% %5.0f ms\n',et9/et_total*100,1000*et9)
-            fprintf(1,'et_SigAmp2 : %5.0f ms\n',1000*et_total)
-            fprintf(1,'\n');
+            % et_total = et1 + et2 + et3 + et4 + et5 + et6 + et7 + et8 + et9;
+            % fprintf(1,'et1:%5.1f %% %5.0f ms\n',et1/et_total*100,1000*et1)
+            % fprintf(1,'et2:%5.1f %% %5.0f ms\n',et2/et_total*100,1000*et2)
+            % fprintf(1,'et3:%5.1f %% %5.0f ms\n',et3/et_total*100,1000*et3)
+            % fprintf(1,'et4:%5.1f %% %5.0f ms\n',et4/et_total*100,1000*et4)
+            % fprintf(1,'et5:%5.1f %% %5.0f ms\n',et5/et_total*100,1000*et5)
+            % fprintf(1,'et6:%5.1f %% %5.0f ms\n',et6/et_total*100,1000*et6)
+            % fprintf(1,'et7:%5.1f %% %5.0f ms\n',et7/et_total*100,1000*et7)
+            % fprintf(1,'et8:%5.1f %% %5.0f ms\n',et8/et_total*100,1000*et8)
+            % fprintf(1,'et9:%5.1f %% %5.0f ms\n',et9/et_total*100,1000*et9)
+            % fprintf(1,'et_SigAmp2 : %5.0f ms\n',1000*et_total)
+            % fprintf(1,'\n');
 
         end % SigAmp2       
        
@@ -1509,8 +1510,85 @@ classdef PO
             % Change the property SimplifySteps to a new value.
             obj.SimplifySteps = new_v;
         end
-        % set_SimplifySteps(ojb,new_v)
+        % set_SimplifySteps
 
+        %% obj = plus(obj1, obj2)
+        function obj = plus(obj1, obj2)
+            if isa(obj2,'double')||isa(obj2,'sym') ||isa(obj2,'char') % obj1 + a
+                obj_base = obj1;
+                axis_tmp = zeros(1,size(obj_base.axis,2));
+                coef_tmp = sym(obj2);
+                bracket_tmp = 0;
+
+            elseif isa(obj1,'double')||isa(obj1,'sym') ||isa(obj1,'char') % a + obj1
+                obj_base = obj2;
+                axis_tmp = zeros(1,size(obj_base.axis,2));
+                coef_tmp = sym(obj1);
+                bracket_tmp = 0;
+    
+            elseif isa(obj2, 'PO')
+                if size(obj1.axis,2) ~= size(obj2.axis,2)
+                    error('The number of spin types for obj1 and obj2 must be same!')
+                end
+                obj_base = obj1;
+                axis_tmp = obj2.axis;
+                coef_tmp = obj2.coef;
+                bracket_tmp = obj2.bracket;              
+
+            end
+            axis_new = [obj_base.axis; axis_tmp];
+            coef_new = [obj_base.coef; coef_tmp];
+            bracket_new = [obj_base.bracket; bracket_tmp];
+
+            obj_base.axis = axis_new;
+            obj_base.coef = coef_new;
+            obj_base.bracket = bracket_new;
+            obj = CombPO(obj_base);
+        end
+        % plus
+
+        %% obj = minus(obj1, obj2)
+        function obj = minus(obj1, obj2)
+            if isa(obj2,'double')||isa(obj2,'sym') ||isa(obj2,'char') % obj1 - a
+                obj_base = obj1;
+                axis_tmp = zeros(1,size(obj_base.axis,2));
+                coef_tmp = -sym(obj2);% Difference from plus()
+                bracket_tmp = 0;
+
+            elseif isa(obj1,'double')||isa(obj1,'sym') ||isa(obj1,'char') % a - obj1
+                obj_base = obj2;
+                obj_base.coef = -1*obj_base.coef;% Difference from plus()
+                axis_tmp = zeros(1,size(obj_base.axis,2));
+                coef_tmp = sym(obj1);
+                bracket_tmp = 0;
+    
+            elseif isa(obj2, 'PO')
+                if size(obj1.axis,2) ~= size(obj2.axis,2)
+                    error('The number of spin types for obj1 and obj2 must be same!')
+                end
+                obj_base = obj1;
+                axis_tmp = obj2.axis;
+                coef_tmp = -1*obj2.coef;% Difference from plus()
+                bracket_tmp = obj2.bracket;              
+
+            end
+            axis_new = [obj_base.axis; axis_tmp];
+            coef_new = [obj_base.coef; coef_tmp];
+            bracket_new = [obj_base.bracket; bracket_tmp];
+
+            obj_base.axis = axis_new;
+            obj_base.coef = coef_new;
+            obj_base.bracket = bracket_new;
+            obj = CombPO(obj_base);
+        end
+        % minus
+
+        %% obj = uminus(obj) 
+        function obj = uminus(obj)
+            obj.coef = -1*obj.coef;
+        end
+        % uminus
+       
     end % methods
     
     methods (Static)
