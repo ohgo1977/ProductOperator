@@ -989,34 +989,34 @@ classdef PO
 
 
         %% dispPOtxt(obj)
-       function dispPOtxt(obj)
-        % dispPOtxt(obj)
-        % Display obj.txt
-               fprintf(1,'    %s\n',obj.txt);
-       end % dispPOtxt
+        function dispPOtxt(obj)
+            % dispPOtxt(obj)
+            % Display obj.txt
+            fprintf(1,'    %s\n',obj.txt);
+        end % dispPOtxt
        
-       %% dispPO(obj)
-       function dispPO(obj)
-       % dispPO(obj)
-       % Display terms and corresponding coefficients.
-       % Example
-       % if rho is for Ix*cos(q) + 2IySz*sin(q)
-       % dispPO(rho) displays
-       % 1  Ix   cos(q)
-       % 2 2IySz sin(q)
-            fprintf(1,'\n');
-       
-            for ii = 1:size(obj.axis,1)
-                axis_tmp = obj.axis(ii,:);
-                pt = axis2pt(obj,axis_tmp);
-                if strcmp(char(obj.Ncoef(ii)),'1')
-                    fprintf(1,'%4d%5s%-10s %s\n',ii,'',pt,char(obj.coef(ii)));
-                else
-                    fprintf(1,'%4d%5s%-10s %s\n',ii,char(obj.Ncoef(ii)),pt,char(obj.coef(ii)));                   
+        %% dispPO(obj)
+        function dispPO(obj)
+        % dispPO(obj)
+        % Display terms and corresponding coefficients.
+        % Example
+        % if rho is for Ix*cos(q) + 2IySz*sin(q)
+        % dispPO(rho) displays
+        % 1  Ix   cos(q)
+        % 2 2IySz sin(q)
+                fprintf(1,'\n');
+        
+                for ii = 1:size(obj.axis,1)
+                    axis_tmp = obj.axis(ii,:);
+                    pt = axis2pt(obj,axis_tmp);
+                    if strcmp(char(obj.Ncoef(ii)),'1')
+                        fprintf(1,'%4d%5s%-10s %s\n',ii,'',pt,char(obj.coef(ii)));
+                    else
+                        fprintf(1,'%4d%5s%-10s %s\n',ii,char(obj.Ncoef(ii)),pt,char(obj.coef(ii)));                   
+                    end
                 end
-            end
-            fprintf(1,'\n');
-       end % dispPO
+                fprintf(1,'\n');
+        end % dispPO
        
         %% obj = pulse_phshift(obj,sp,ph,q)
         function obj = pulse_phshift(obj,sp,ph,q)
@@ -1132,79 +1132,187 @@ classdef PO
             obj = obj_tmp;
         end % pfg        
         
-       %% a0_V = SigAmp(obj,sp,phR)
-       function [a0_V,rho_V] = SigAmp(obj,sp,phR)
-           % a0_V = SigAmp(obj,sp,phR)
-           % Calculation of initial signal amplitudes (t=0) in the equation
-           % s(t) = 2*i*(rho[-b](t) + rho[-a](t) + rho[b-](t) + rho[a-](t))*exp(-i*phrec)
-           % Spin Dynamics (2nd Ed.), p.379.
-           %
-           % Related topics: Spin Dynamics (2nd Ed.), p.262, p. 287, p. 371, p.379, pp.608-610.
-           %
-           % Example
-           % a0_V = SigAmp(rho,'S','y')
-           % a0_V = SigAmp(rho,'IS',0)
-           % a0_V = SigAmp(rho,[1 2],0)
+        %% a0_V = SigAmp(obj,sp,phR)
+        function [a0_V,rho_V] = SigAmp(obj,sp,phR)
+            % a0_V = SigAmp(obj,sp,phR)
+            % Calculation of initial signal amplitudes (t=0) in the equation
+            % s(t) = 2*i*(rho[-b](t) + rho[-a](t) + rho[b-](t) + rho[a-](t))*exp(-i*phrec)
+            % Spin Dynamics (2nd Ed.), p.379.
+            %
+            % Related topics: Spin Dynamics (2nd Ed.), p.262, p. 287, p. 371, p.379, pp.608-610.
+            %
+            % Example
+            % a0_V = SigAmp(rho,'S','y')
+            % a0_V = SigAmp(rho,'IS',0)
+            % a0_V = SigAmp(rho,[1 2],0)
 
-            spin_label_cell = obj.spin_label;
+                spin_label_cell = obj.spin_label;
 
-            if isa(sp,'double')
-                for ii = 1:length(sp)
-                    sp_tmp = sp(ii); % double                   
-                    sp_tmp = spin_label_cell{sp_tmp};% char 
-                    sp_m = [sp_tmp 'm'];% sp_m = 'ImSm ...'.
+                if isa(sp,'double')
+                    for ii = 1:length(sp)
+                        sp_tmp = sp(ii); % double                   
+                        sp_tmp = spin_label_cell{sp_tmp};% char 
+                        sp_m = [sp_tmp 'm'];% sp_m = 'ImSm ...'.
 
-                    ObsPO = PO(size(obj.axis,2),{sp_m},{sym(1)},spin_label_cell);
-                    if ii == 1
-                        obsPO_M = ObsPO.M;% Create obsPO_M
-                    else
-                        obsPO_M = obsPO_M + ObsPO.M;
-                    end
-                end
-            elseif isa(sp,'char')
-                ii_int = 0;
-                for ii = 1:length(spin_label_cell)
-                    spin_label_tmp = spin_label_cell{ii};
-                    if contains(sp,spin_label_tmp)
-                        ii_int = ii_int + 1;
-                        sp_tmp = spin_label_tmp;% char 
-                        sp_m = [sp_tmp 'm'];% Im, Sm, ... .
-    
                         ObsPO = PO(size(obj.axis,2),{sp_m},{sym(1)},spin_label_cell);
-                        if ii_int == 1
+                        if ii == 1
                             obsPO_M = ObsPO.M;% Create obsPO_M
                         else
                             obsPO_M = obsPO_M + ObsPO.M;
                         end
                     end
+                elseif isa(sp,'char')
+                    ii_int = 0;
+                    for ii = 1:length(spin_label_cell)
+                        spin_label_tmp = spin_label_cell{ii};
+                        if contains(sp,spin_label_tmp)
+                            ii_int = ii_int + 1;
+                            sp_tmp = spin_label_tmp;% char 
+                            sp_m = [sp_tmp 'm'];% Im, Sm, ... .
+        
+                            ObsPO = PO(size(obj.axis,2),{sp_m},{sym(1)},spin_label_cell);
+                            if ii_int == 1
+                                obsPO_M = ObsPO.M;% Create obsPO_M
+                            else
+                                obsPO_M = obsPO_M + ObsPO.M;
+                            end
+                        end
+                    end
+                end
+
+                a0_M = obj.M.*obsPO_M;            
+                % This should be Hadamard product
+                % rho.M.*(Im.M + Sm.M + ...) extracts only (-1)-quantum coherence components in rho, 
+                % i.e., (Im.M + Sm.M + ...) works as a mask.
+                
+                obsPO_V = reshape(obsPO_M,1,numel(obsPO_M));
+                id_tmp = obsPO_V ~= sym(0);
+
+                a0_V = reshape(a0_M,1,numel(a0_M));
+                % id_tmp = a0_V ~= sym(0);
+                a0_V = a0_V(id_tmp);
+                a0_V = 2*1i*PO.rec_coef(phR)*a0_V;
+                
+                rho = obj.coherence;
+                rho_V = reshape(rho,1,numel(rho));
+                rho_V = rho_V(id_tmp);
+
+                if obj.disp == 1
+                    ph_s = PO.ph_num2str(phR);
+                    fprintf(1,'phRec: %2s\n',ph_s);
+                end
+                
+        end % SigAmp
+
+        %% [a0_V,rho_V] = SigAmp2(obj,sp_cell,phR)
+        function [a0_V,rho_V] = SigAmp2(obj,sp_cell,phR)
+            % a0_V = SigAmp2(obj,sp_cell,phR)
+            % Calculation of initial signal amplitudes (t=0) in the equation
+            % s(t) = 2*i*(rho[-b](t) + rho[-a](t) + rho[b-](t) + rho[a-](t))*exp(-i*phrec)
+            % Spin Dynamics (2nd Ed.), p.379.
+            %
+            % Related topics: Spin Dynamics (2nd Ed.), p.262, p. 287, p. 371, p.379, pp.608-610.
+            %
+            % Example
+            % a0_V = SigAmp(rho,{'S'},'y')
+            % a0_V = SigAmp(rho,{'I' 'S'},0)
+            % a0_V = SigAmp(rho,{'I*' 'S'},0)
+            % a0_V = SigAmp(rho,{1 2},0)
+
+            tic;
+            spin_label_cell = obj.spin_label;
+            sp_cell_tmp = cell(1,0);
+            ii_int = 0;
+            for ii = 1:max(size(sp_cell))
+                sp = sp_cell{ii};
+                if isa(sp,'double')
+                    sp = spin_label_cell{sp};
+                end
+
+                if contains(sp,'*')% Wildcard 'I*' or '*'
+                    if length(sp) == 1 % '*'
+                        id_vec = 1:size(obj.axis,2);                        
+                    elseif length(sp) == 2 % 'I*' 
+                        id_vec = find(contains(spin_label_cell,sp(1)));% 1st character of sp
+                    end
+
+                    for jj = id_vec
+                        ii_int = ii_int + 1;
+                        sp_cell_tmp{1,ii_int} = spin_label_cell{jj};% Char
+                    end
+                else % sp doesn't include '*'
+                    ii_int = ii_int + 1;
+                    sp_cell_tmp{1,ii_int} = sp;% Char
+                end
+            end 
+            et1 = toc;         
+
+            tic;
+            for ii = 1:length(sp_cell_tmp)
+                sp_tmp = sp_cell_tmp{ii};
+                sp_m = [sp_tmp 'm'];% sp_m : 'Im', 'Sm', ...
+
+                ObsPO = PO(size(obj.axis,2),{sp_m},{sym(1)},spin_label_cell);% 170 ms
+                if ii == 1
+                    obsPO_M = ObsPO.M;% Create obsPO_M
+                else
+                    obsPO_M = obsPO_M + ObsPO.M;
                 end
             end
+            et2 = toc;
 
-            a0_M = obj.M.*obsPO_M;            
+            tic;
+            obsPO_V = reshape(obsPO_M,1,numel(obsPO_M));
+            id_tmp = obsPO_V ~= sym(0);
+            obsPO_V = obsPO_V(id_tmp);
+            et3 = toc;
+
+            tic;
+            objM_V = reshape(obj.M,1,numel(obj.M));
+            objM_V = objM_V(id_tmp);
+            et4 = toc;
+
+            tic;
+            a0_V = objM_V.*obsPO_V;
             % This should be Hadamard product
             % rho.M.*(Im.M + Sm.M + ...) extracts only (-1)-quantum coherence components in rho, 
             % i.e., (Im.M + Sm.M + ...) works as a mask.
-            
-            obsPO_V = reshape(obsPO_M,1,numel(obsPO_M));
-            id_tmp = obsPO_V ~= sym(0);
+            et5 = toc;
 
-            a0_V = reshape(a0_M,1,numel(a0_M));
-            % id_tmp = a0_V ~= sym(0);
-            a0_V = a0_V(id_tmp);
+            tic;
             a0_V = 2*1i*PO.rec_coef(phR)*a0_V;
-            
+            et6 = toc;
+
+            tic;
             rho = obj.coherence;
+            et7 = toc;
+
+            tic;
             rho_V = reshape(rho,1,numel(rho));
             rho_V = rho_V(id_tmp);
+            et8 = toc;
 
+            tic;
             if obj.disp == 1
                 ph_s = PO.ph_num2str(phR);
                 fprintf(1,'phRec: %2s\n',ph_s);
             end
-            
-       end % SigAmp
+            et9 = toc;
 
-       
+            et_total = et1 + et2 + et3 + et4 + et5 + et6 + et7 + et8 + et9;
+            fprintf(1,'et1:%5.1f %% %5.0f ms\n',et1/et_total*100,1000*et1)
+            fprintf(1,'et2:%5.1f %% %5.0f ms\n',et2/et_total*100,1000*et2)
+            fprintf(1,'et3:%5.1f %% %5.0f ms\n',et3/et_total*100,1000*et3)
+            fprintf(1,'et4:%5.1f %% %5.0f ms\n',et4/et_total*100,1000*et4)
+            fprintf(1,'et5:%5.1f %% %5.0f ms\n',et5/et_total*100,1000*et5)
+            fprintf(1,'et6:%5.1f %% %5.0f ms\n',et6/et_total*100,1000*et6)
+            fprintf(1,'et7:%5.1f %% %5.0f ms\n',et7/et_total*100,1000*et7)
+            fprintf(1,'et8:%5.1f %% %5.0f ms\n',et8/et_total*100,1000*et8)
+            fprintf(1,'et9:%5.1f %% %5.0f ms\n',et9/et_total*100,1000*et9)
+            fprintf(1,'et_SigAmp2 : %5.0f ms\n',1000*et_total)
+            fprintf(1,'\n');
+
+        end % SigAmp2       
        
        %% pt = axis2pt(obj,axis_tmp)
        function pt = axis2pt(obj,axis_tmp)
@@ -1496,7 +1604,8 @@ classdef PO
                     M_tmp = [0 0;1 0];   
               end
           end
-          M_out = sym(M_tmp);
+        %   M_out = sym(M_tmp);
+          M_out = M_tmp; % Output as double. It is converted to sym in get.M().
        end % axis2M
 
        %% rho = rho_box(n)
@@ -1522,36 +1631,30 @@ classdef PO
         % % b b a = 0 0 1
         % % b b b = 0 0 0
      
-        rho = sym(zeros(n_s,n_s));
+        rho_cell = cell(n_s,n_s);
         % rho(c,r) = <c|rho|r>
         % Since the spin state should be read from right to left,
         % rho(c,r) correspond to |c> => |r>
         % Spin Dynamics, p. 470.
+ 
         for ii = 1:n_s% row
             for jj = 1:n_s% column
                 r_vec = bin_mat(ii,:);%|r>
                 c_vec = bin_mat(jj,:);%|c>
                 rho_vec = r_vec - c_vec;% To know |c> => |r>  
                 
-                rho_tmp = '';
-                for kk = 1:n
-                    bin_c = rho_vec(kk);
-                    if bin_c == -1 % a => b
-                        s_tmp = 'm';
-                    elseif bin_c == 0% a => a or b => b 
-                        if c_vec(kk) == 1 % a
-                            s_tmp = 'a';
-                        elseif c_vec(kk) == 0 % b
-                            s_tmp = 'b';
-                        end
-                    elseif bin_c == 1 % b => a
-                        s_tmp = 'p';
-                    end
-                    rho_tmp = strcat(rho_tmp,s_tmp);
-                end
-            rho(ii,jj) = sym(rho_tmp); 
+                p_id = find(rho_vec == 1);% p
+                m_id = find(rho_vec == -1);% m
+                a_id = find(c_vec == 1);% a
+                rho_tmp = char(double('b')*ones(1,n));
+                rho_tmp(a_id) = 'a';% 'abaa..' style of c_vec
+                rho_tmp(p_id) = 'p';%
+                rho_tmp(m_id) = 'm';%
+
+            rho_cell{ii,jj} = rho_tmp;
             end
         end
+        rho = sym(rho_cell);
     end
     % rho = rho_box(n)
       
