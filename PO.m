@@ -91,7 +91,7 @@ classdef (InferiorClasses = {?sym}) PO
                 % Examples 
                 % IxSx   => Ns = 2 => Ncoef = 2
                 % IxSxKx => Ns = 3 => Ncoef = 4
-            elseif strcmp(obj.basis, 'pmz')% Raising/Lowering  operator basis
+            elseif strcmp(obj.basis, 'pmz') || strcmp(obj.basis, 'pol')% Raising/Lowering  operator basis
                 Ncoef_cnst = sym(ones(size(obj.axis,1),1));% Ncoef = 1
             end
         end % get.Ncoef
@@ -265,6 +265,8 @@ classdef (InferiorClasses = {?sym}) PO
                                 case 'z', phase_id = 3;
                                 case 'p', phase_id = 4;
                                 case 'm', phase_id = 5;
+                                case 'a', phase_id = 6;
+                                case 'b', phase_id = 7;
                                 otherwise, phase_id = 0;%Any unknown phase becomes 1/2E
                             end
                             axis_tmp(id_tmp) = phase_id;
@@ -287,11 +289,12 @@ classdef (InferiorClasses = {?sym}) PO
                    end
                 end
 
-
-                if isempty(find(axis_out == 4,1)) && isempty(find(axis_out == 5,1))% Cartesian operator basis
+                if isempty(find(axis_out == 4,1)) && isempty(find(axis_out == 5,1)) && isempty(find(axis_out == 6,1)) && isempty(find(axis_out == 7,1))% Cartesian operator basis
                     basis_out = 'xyz';
-                elseif isempty(find(axis_out == 1,1)) && isempty(find(axis_out == 2,1))% Raising/Lowering operator basis
+                elseif isempty(find(axis_out == 1,1)) && isempty(find(axis_out == 2,1)) && isempty(find(axis_out == 6,1)) && isempty(find(axis_out == 7,1))% Raising/Lowering operator basis
                     basis_out = 'pmz';
+                elseif isempty(find(axis_out == 1,1)) && isempty(find(axis_out == 2,1))
+                    basis_out = 'pol';
                 else % Mixiture of Cartesian operator and Raising/Lowering operator bases
                     error('Error: Cartesian operator basis and Raising/Lowering operator basis should not be mixed!!');
                 end
@@ -428,7 +431,7 @@ classdef (InferiorClasses = {?sym}) PO
             % obj = xyz2pmz(obj)
             % conversion from Cartesian operator basis to lowring/raising operator basis
 
-            if strcmp(obj.basis,'pmz')
+            if ~strcmp(obj.basis,'xyz')
                 error('The basis of the object should be xyz')
             end
 
@@ -478,7 +481,7 @@ classdef (InferiorClasses = {?sym}) PO
                             bin_vec = bin_mat(:,int_count);
                             axis_out_tmp(:,jj) = bin_vec;
 
-                            c_tmp = zeros(size(bin_vec));
+                            c_tmp = ones(size(bin_vec));
                             if axis_v == 1 % Ix = 1/2*Ip + 1/2*Im
                                 c_tmp(bin_vec == 4) = 1/2;
                                 c_tmp(bin_vec == 5) = 1/2;
@@ -518,10 +521,10 @@ classdef (InferiorClasses = {?sym}) PO
 
         % obj = pmz2xyz(obj)
         function obj = pmz2xyz(obj)
-            % obj = xyz2pmz(obj)
+            % obj = pmz2xyz(obj)
             % conversion from lowring/raising operator basis to Cartesian operator basis.
 
-            if strcmp(obj.basis,'xyz')
+            if ~strcmp(obj.basis,'pmz')
                 error('The basis of the object should be pmz')
             end
 
@@ -565,7 +568,7 @@ classdef (InferiorClasses = {?sym}) PO
                             bin_vec = bin_mat(:,int_count);
                             axis_out_tmp(:,jj) = bin_vec;
 
-                            c_tmp = zeros(size(bin_vec));
+                            c_tmp = ones(size(bin_vec));
                             if axis_v == 4
                                 c_tmp(bin_vec == 1) = 1;
                                 c_tmp(bin_vec == 2) = 1i;
@@ -605,6 +608,217 @@ classdef (InferiorClasses = {?sym}) PO
             obj = CombPO(obj2);
         end
         % pmz2xyz
+
+        % obj = xyz2pol(obj)
+        function obj = xyz2pol(obj)
+            % obj = xyz2pol(obj)
+            % conversion from Cartesian operator basis to Polarization operator basis
+
+            if ~strcmp(obj.basis,'xyz')
+                error('The basis of the object should be xyz')
+            end
+
+            axis_in = obj.axis;
+            coef_in = obj.coef;
+            Ncoef_in = obj.Ncoef;
+            spin_no = size(axis_in,2);
+        
+            axis_out = [];
+            coef_out = [];
+            for ii = 1:size(axis_in,1)
+                axis_tmp = axis_in(ii,:);
+
+                % Conversion from Ix and Iy to Ip and Im
+                % xn = length(find(axis_tmp == 1)); % Example: IxSyKxMz =>(Ip + Im)(Sp - Sm)(Kp + Km)Mz
+                % yn = length(find(axis_tmp == 2)); % xn =2, yn = 1 => 2^(2+1) = 8 terms.
+                % zn = length(find(axis_tmp == 3));
+                % en = length(find(axis_tmp == 0));
+                % xyzen = 2^(xn + yn + zn + en);
+                xyzen = 2^spin_no;
+
+                coef_out_tmp = ones(xyzen,1);
+        
+                dec = 0:xyzen - 1;
+                bin_mat = de2bi(dec,spin_no,'left-msb');
+                for jj = 1:spin_no
+                    axis_v = axis_tmp(jj);
+                    if axis_v == 1 || axis_v == 2
+                        bin_mat (bin_mat(:, jj) == 0, jj) = 4; % p
+                        bin_mat (bin_mat(:, jj) == 1, jj) = 5; % m
+                    elseif axis_v == 3 || axis_v == 0
+                        bin_mat (bin_mat(:, jj) == 0, jj) = 6; % a
+                        bin_mat (bin_mat(:, jj) == 1, jj) = 7; % b
+                    end
+                end
+                axis_out_tmp = bin_mat;
+
+                for jj = 1:spin_no
+                    axis_v = axis_tmp(jj);
+                    bin_vec = bin_mat(:,jj);
+
+                    c_tmp = ones(size(bin_vec));
+                    if axis_v == 1 % Ix = 1/2*Ip + 1/2*Im
+                        c_tmp(bin_vec == 4) = 1/2;
+                        c_tmp(bin_vec == 5) = 1/2;
+
+                    elseif axis_v == 2 % Iy = 1/(2i)*Ip - 1/(2i)*Im
+                        c_tmp(bin_vec == 4) = 1/(2*1i);
+                        c_tmp(bin_vec == 5) = -1/(2*1i);
+
+                    elseif axis_v == 3 % Iz = 1/2*Ia - 1/2*Ib
+                        c_tmp(bin_vec == 6) =  1/2;
+                        c_tmp(bin_vec == 7) = -1/2;                      
+
+                    elseif axis_v == 0 % hE = 1/2*Ia + 1/2*Ib
+                        c_tmp(bin_vec == 6) =  1/2;
+                        c_tmp(bin_vec == 7) =  1/2;
+                    % elseif axis_v == 0 % E = Ia + Ib
+                    %     c_tmp(bin_vec == 6) =  1;
+                    %     c_tmp(bin_vec == 7) =  1;                                  
+                    end
+                    coef_out_tmp = coef_out_tmp.*c_tmp;
+                end
+
+                % Combine terms
+                axis_out = [axis_out;axis_out_tmp];
+                coef_out_tmp = coef_out_tmp*coef_in(ii)*2^(spin_no - 1);
+                % coef_out_tmp = coef_out_tmp*coef_in(ii)*Ncoef_in(ii);
+                coef_out = [coef_out;coef_out_tmp];
+            end % ii
+        
+            bracket_out = [];
+            for ii = 1:length(coef_out)
+                symcoef = coef_out(ii);
+                if contains(char(symcoef),'+')||contains(char(symcoef),'-')% 'a+b' or 'a-b'-type coefficients
+                    bracket_out = cat(1,bracket_out,1);
+                else
+                    bracket_out = cat(1,bracket_out,0);
+                end
+            end
+        
+            obj2 = obj;
+            obj2.axis = axis_out;
+            obj2.coef = coef_out;
+            obj2.bracket = bracket_out;
+            obj2.basis = 'pol';
+            obj = CombPO(obj2);
+        end
+        % xyz2pol
+
+        % obj = pol2xyz(obj)
+        function obj = pol2xyz(obj)
+            % obj = pol2xyz(obj)
+            % conversion from polarization operator basis to Cartesian operator basis.
+
+            if ~strcmp(obj.basis,'pol')
+                error('The basis of the object should be pol')
+            end
+
+            axis_in = obj.axis;
+            coef_in = obj.coef;
+            Ncoef_in = obj.Ncoef;
+            spin_no = size(axis_in,2);
+        
+            axis_out = [];
+            coef_out = [];
+            for ii = 1:size(axis_in,1)
+                axis_tmp = axis_in(ii,:);
+                xyzen = 2^spin_no;
+
+                coef_out_tmp = ones(xyzen,1);
+        
+                % Need to consider the case of Ia for multiple spins.
+                % For example, Ia in three-spin system is [6 0 0] created by PO().
+
+                dec = 0:xyzen - 1;
+                bin_mat = de2bi(dec,spin_no,'left-msb');
+                for jj = 1:spin_no
+                    axis_v = axis_tmp(jj);
+                    if axis_v == 4 || axis_v == 5
+                        bin_mat (bin_mat(:, jj) == 1, jj) = 2; % y
+                        bin_mat (bin_mat(:, jj) == 0, jj) = 1; % x
+                    elseif axis_v == 6 || axis_v == 7
+                        bin_mat (bin_mat(:, jj) == 0, jj) = 3; % z
+                        bin_mat (bin_mat(:, jj) == 1, jj) = 0; % hE
+                    else
+                        bin_mat(:,jj) = 0;
+                    end
+                end
+
+                axis_out_tmp = bin_mat;
+
+                for jj = 1:spin_no
+                    axis_v = axis_tmp(jj);
+                    bin_vec = bin_mat(:,jj);
+
+                    c_tmp = ones(size(bin_vec));
+                    if axis_v == 4    % Ip = Ix + 1i*Iy
+                        c_tmp(bin_vec == 1) = 1;
+                        c_tmp(bin_vec == 2) = 1i;
+                    elseif axis_v == 5 % Im = Ix - 1i*Iy
+                        c_tmp(bin_vec == 1) = 1;
+                        c_tmp(bin_vec == 2) = -1i;                        
+                    elseif axis_v == 6 % Ia = hE + Iz
+                        c_tmp(bin_vec == 0) =  1;                            
+                        c_tmp(bin_vec == 3) =  1;
+                    elseif axis_v == 7 % Ib = hE - Iz
+                        c_tmp(bin_vec == 0) =  1;                            
+                        c_tmp(bin_vec == 3) = -1;
+                    end
+                    coef_out_tmp = coef_out_tmp.*c_tmp;
+                end
+                
+                axis_out = [axis_out;axis_out_tmp];
+                coef_out_tmp = coef_out_tmp*coef_in(ii)*Ncoef_in(ii)*(1/2)^(spin_no-1);
+                % IpSpKa creates IxSxKz, IxSxhE = 1/2*IxSx, ....
+                % After the automatic calculation of Ncoef, these terms become 
+                % 4*IxSxKz instead of IxSxkz
+                % 2*IxSx   instead of 1/2*IxSx.
+                % To compensate the difference, it is necessary to apply (1/2)^(spin_no-1).
+                    
+                coef_out = [coef_out;coef_out_tmp];
+            end
+        
+            bracket_out = [];
+            for ii = 1:length(coef_out)
+                symcoef = coef_out(ii);
+                if contains(char(symcoef),'+')||contains(char(symcoef),'-')% 'a+b' or 'a-b'-type coefficients
+                    bracket_out = cat(1,bracket_out,1);
+                else
+                    bracket_out = cat(1,bracket_out,0);
+                end
+            end
+        
+            obj2 = obj;
+            obj2.axis = axis_out;
+            obj2.coef = coef_out;
+            obj2.bracket = bracket_out;
+            obj2.basis = 'xyz';
+            obj = CombPO(obj2);
+        end
+        % pol2xyz
+
+        %% obj = pmz2pol(obj)
+        function obj = pmz2pol(obj)
+            if ~strcmp(obj.basis,'pmz')
+                error('The basis of the object should be pmz')
+            end
+
+            obj = pmz2xyz(obj);
+            obj = xyz2pol(obj);
+        end
+        % pmz2pol
+
+        %% obj = pol2pmz(obj)
+        function obj = pol2pmz(obj)
+            if ~strcmp(obj.basis,'pol')
+                error('The basis of the object should be pol')
+            end
+
+            obj = pol2xyz(obj);
+            obj = xyz2pmz(obj);
+        end
+        % pol2pmz
 
         %% obj = UrhoUinv(obj,H,q)
         function obj = UrhoUinv(obj,H,q)
@@ -646,24 +860,19 @@ classdef (InferiorClasses = {?sym}) PO
             coef_new = [];
             H_axis = H.axis;
 
-            % type_mask_mat = (obj.axis.*H_axis) ~= 0;% It seems that H_axis can be used instead of H_axis_mat
+            % type_mask_mat = (obj.axis.*H_axis) ~= 0;%
             % axis_diff_mat = obj.axis ~= H_axis;
-            % axis_mask_mat = type_mask_mat.*axis_diff_mat;
-            % axis_mask_vec = sum(axis_mask_mat,2);
-
-            % H_axis_mat = repmat(H_axis,size(obj.axis,1),1);
-            % type_mask_mat = (obj.axis.*H_axis_mat) ~= 0;% It seems that H_axis can be used instead of H_axis_mat
-            % axis_diff_mat = obj.axis ~= H_axis_mat;
             % axis_mask_mat = type_mask_mat.*axis_diff_mat;
             % axis_mask_vec = sum(axis_mask_mat,2);
 
             for ii = 1:length(obj.coef)% For each term of rho
                 rho_axis = obj.axis(ii,:);
+                % axis_mask = axis_mask_vec(ii);
+
                 type_mask_vec = (rho_axis.*H_axis) ~= 0;% Check how many spin types get matched, matched: 1, unmatched: 0
                 axis_diff_vec = rho_axis ~= H_axis;% Check the difference of the direction of each spin type
                 axis_mask_vec = type_mask_vec.*axis_diff_vec;
                 axis_mask = sum(axis_mask_vec);
-                % axis_mask = axis_mask_vec(ii);
 
                 % The cases of axis_mask = 1 means
                 % there is at least one match of spin types between H and rho
@@ -1342,6 +1551,10 @@ classdef (InferiorClasses = {?sym}) PO
                             at = 'p';
                         elseif axis_v == 5
                             at = 'm';
+                        elseif axis_v == 6
+                            at = 'a';
+                        elseif axis_v == 7
+                            at = 'b';
                         end                
                         pt = strcat(pt,st,at);
                     end            
@@ -1437,6 +1650,7 @@ classdef (InferiorClasses = {?sym}) PO
                                                 4*ones(rate_tmp,1);...
                                                 5*ones(rate_tmp,1)];
                                 % phase_id_vec = [1 1 1... 2 2 2... 3 3 3...4 4 4...5 5 5...]'
+                                % repelem can be used.
                                 axis_tmp(:,id_tmp) = phase_id_vec;                            
                             end
                         end
@@ -1520,16 +1734,21 @@ classdef (InferiorClasses = {?sym}) PO
                 coef_tmp = sym(obj2);
                 bracket_tmp = 0;
 
-            elseif isa(obj1,'double')||isa(obj1,'sym') ||isa(obj1,'char') % a + obj1
+            elseif isa(obj1,'double')||isa(obj1,'sym') ||isa(obj1,'char') % a + obj2
                 obj_base = obj2;
                 axis_tmp = zeros(1,size(obj_base.axis,2));
                 coef_tmp = sym(obj1);
                 bracket_tmp = 0;
     
-            elseif isa(obj2, 'PO')
+            elseif isa(obj1, 'PO') && isa(obj2, 'PO')
                 if size(obj1.axis,2) ~= size(obj2.axis,2)
                     error('The number of spin types for obj1 and obj2 must be same!')
                 end
+
+                if ~strcmp(obj1.basis, obj2.basis)
+                    error('The bases of obj1 and obj2 must be same!')
+                end
+
                 obj_base = obj1;
                 axis_tmp = obj2.axis;
                 coef_tmp = obj2.coef;
@@ -1555,16 +1774,20 @@ classdef (InferiorClasses = {?sym}) PO
                 coef_tmp = -sym(obj2);% Difference from plus()
                 bracket_tmp = 0;
 
-            elseif isa(obj1,'double')||isa(obj1,'sym') ||isa(obj1,'char') % a - obj1
+            elseif isa(obj1,'double')||isa(obj1,'sym') ||isa(obj1,'char') % a - obj2
                 obj_base = obj2;
                 obj_base.coef = -1*obj_base.coef;% Difference from plus()
                 axis_tmp = zeros(1,size(obj_base.axis,2));
                 coef_tmp = sym(obj1);
                 bracket_tmp = 0;
     
-            elseif isa(obj2, 'PO')
+            elseif isa(obj1, 'PO') && isa(obj2, 'PO')
                 if size(obj1.axis,2) ~= size(obj2.axis,2)
                     error('The number of spin types for obj1 and obj2 must be same!')
+                end
+
+                if ~strcmp(obj1.basis, obj2.basis)
+                    error('The bases of obj1 and obj2 must be same!')
                 end
                 obj_base = obj1;
                 axis_tmp = obj2.axis;
@@ -1588,12 +1811,218 @@ classdef (InferiorClasses = {?sym}) PO
             obj.coef = -1*obj.coef;
         end
         % uminus
-       
+
+        %% obj = uplus(obj) 
+        function obj = uplus(obj)
+
+        end
+        % uplus
+
+        %% obj = mtimes(obj1, obj2)
+        function obj = mtimes(obj1, obj2)
+            if isa(obj1,'PO') && isa(obj2,'PO')
+                if size(obj1.axis,2) ~= size(obj2.axis,2)
+                    error('The number of spin types for obj1 and obj2 must be same!')
+                end
+
+                % xyz vs. pmz: hE and Iz are shared
+                if ~strcmp(obj1.basis,'pol') && ~strcmp(obj2.basis,'pol')% Excluding pol (6, 7) => xyz (0,1,2,3) and pmz (0,3,4,5)
+
+                    if ~strcmp(obj1.basis, obj2.basis) % Bases are not matching
+                        if ~isempty(find(ismember(obj1.axis,[1 2 4 5]),1)) &&...
+                        ~isempty(find(ismember(obj2.axis,[1 2 4 5]),1))
+                            error('Error1: The bases of obj1 and obj2 must be same!')
+                            % ~isempty(find(ismember(obj.axis,[1 2 4 5]),1)) returns 1 if obj.axis includes 1,2,4 or 5
+                            % => If both obj1 and obj2 include 1,2,4 or 5, the error appears.
+                            % => If one of them only includes 0 or 3 and the other includes 1,2,4, or 5, no error appears.
+                        end
+                    end
+    
+                    basis_org = 'xyz';
+                    % Conversion from pmz to xyz
+                    if strcmp(obj1.basis, 'pmz') 
+                        obj1 = pmz2xyz(obj1);
+                        basis_org = 'pmz';
+                    end
+
+                    if strcmp(obj2.basis, 'pmz') 
+                        obj2 = pmz2xyz(obj2);
+                        basis_org = 'pmz';
+                    end
+                    
+
+                % pmz vs. pol: Ip and Im are shared
+                elseif ~strcmp(obj1.basis,'xyz') && ~strcmp(obj2.basis,'xyz')% Excluding xyz (1,2) => pol (4,5,6,7) and pmz (0,3,4,5)
+ 
+                     if ~strcmp(obj1.basis, obj2.basis) % Bases are not matching
+                         if ~isempty(find(ismember(obj1.axis,[3 6 7]),1)) &&...% Ia, Ip include 0 if spin_no > 1
+                         ~isempty(find(ismember(obj2.axis,[3 6 7]),1))
+                            error('Error2: The bases of obj1 and obj2 must be same!')
+                            % ~isempty(find(ismember(obj.axis,[3 6 7]),1)) returns 1 if obj.axis includes 3(Iz),6(Ia) or 7(Ib)
+                            % => If both obj1 and obj2 include 3,6,or 7, the error appears.
+                            % => If one of them include only 0, 3, 4, 5 (E, Iz, Ip, Im) and the other includes 1,2,6, or 7, no error appears.
+                         end
+                     end
+ 
+                     basis_org = 'pmz';
+                     % Conversion from pmz to xyz
+                     if strcmp(obj1.basis, 'pol') 
+                        obj1 = pol2xyz(obj1);
+                        basis_org = 'pol';
+                     elseif strcmp(obj1.basis, 'pmz')
+                        obj1 = pmz2xyz(obj1); 
+                     end
+ 
+                     if strcmp(obj2.basis, 'pol') 
+                        obj2 = pol2xyz(obj2);
+                        basis_org = 'pol';
+                     elseif strcmp(obj2.basis, 'pmz')
+                        obj2 = pmz2xyz(obj2);
+                     end
+
+                else
+                       error('Error3: The bases of obj1 and obj2 must be same!')
+                end
+
+
+                % Adjustment of size
+                obj_base = obj1;
+
+                axis1 = obj1.axis;
+                coef1 = obj1.coef;
+                bracket1 = obj1.bracket;
+                Ncoef1 = obj1.Ncoef;
+
+                axis2 = obj2.axis;
+                coef2 = obj2.coef;
+                bracket2 = obj2.bracket;
+                Ncoef2 = obj2.Ncoef;
+
+                row1 = size(axis1,1);
+                row2 = size(axis2,1);
+
+                axis1M = repmat(axis1,row2,1);
+                coef1V = repmat(coef1,row2,1);
+                bracket1V = repmat(bracket1,row2,1);
+                Ncoef1V = repmat(Ncoef1,row2,1);
+
+                axis2M = repelem(axis2,row1,1);
+                coef2V = repelem(coef2,row1,1);
+                bracket2V = repelem(bracket2,row1,1);
+                Ncoef2V = repelem(Ncoef2,row1,1);
+
+                % Comparison of axis1M and axis2M to detect overlapping of spin types
+                comp_M = axis1M.*axis2M > 0;
+                comp_V = sum(comp_M,2);
+                % if a value of comp_V is larger than 0, 
+                % it is necessary to consider the case of IxIy, etc.
+
+                % Product   in the spin-operator system is equivalent to
+                % Summation in the axis representation in this code.
+                axis_new = axis1M + axis2M;
+                coef_new = coef1V.*coef2V;
+                bracket_new = double((bracket1V + bracket2V) > 0);
+                Ncoef_new = Ncoef1V.*Ncoef2V;
+
+                at = [ 0  3  2; 
+                       3  0  1; 
+                       2  1  0];
+
+                ct = [ 1/2  1i -1i;
+                      -1i  1/2   1i;
+                       1i -1i  1/2];
+                ct = sym(1/2*ct);
+                % Ix*Ix =   1/4*E  Ix*Iy =  1i/2*Iz Ix*Iz = -1i/2*Iy
+                % Iy*Ix = -1i/2*Iz Iy*Iy =   1/4*E  Iy*Iz =  1i/2*Ix
+                % Iz*Ix =  1i/2*Iy Iz*Iy = -1i/2*Ix Iz*Iz =   1/4*E
+
+                ii_vec = find(comp_V > 0);
+                if ~isrow(ii_vec)
+                    ii_vec = ii_vec';
+                end
+
+                for ii = ii_vec
+                    comp_M_row = comp_M(ii,:);
+                    jj_vec = find(comp_M_row == 1);
+                    if ~isrow(jj_vec)
+                        jj_vec = jj_vec';
+                    end
+
+                    for jj = jj_vec
+                        id1 = axis1M(ii,jj);
+                        id2 = axis2M(ii,jj);
+                        axis_new(ii,jj) = at(id1,id2);
+                        coef_new(ii) = coef_new(ii)*ct(id1,id2);
+                    end
+                end
+
+                obj_base.axis = axis_new;
+                obj_base.coef = coef_new;
+                obj_base.bracket = bracket_new;
+
+                % Comparison of Ncoef*coef before and after
+                % totalcoef_in =  Ncoef_new.*coef_new;
+                % totalcoef_out = obj_base.Ncoef.*obj_base.coef;
+                % totalcoef_in =  Ncoef_new;
+                % totalcoef_out = obj_base.Ncoef;
+                % totalcoef_rate = totalcoef_in./totalcoef_out;
+                Ncoef_in =  Ncoef_new;
+                Ncoef_out = obj_base.Ncoef;
+                Ncoef_rate = Ncoef_in./Ncoef_out;
+
+                % id_coef = find(totalcoef_rate ~= sym(1));
+                id_coef = find(Ncoef_rate ~= sym(1));
+                if ~isrow(id_coef)
+                    id_coef = id_coef';
+                end
+
+                for ii = id_coef
+                    % obj_base.coef(ii) = obj_base.coef(ii)*totalcoef_rate(ii);
+                    obj_base.coef(ii) = obj_base.coef(ii)*Ncoef_rate(ii);
+                end
+
+                obj = CombPO(obj_base);
+
+                % Conversion from xyz to pmz
+                if strcmp(basis_org, 'pmz')
+                    obj = xyz2pmz(obj);
+                elseif strcmp(basis_org, 'pol')
+                    obj = xyz2pol(obj);
+                end
+            else
+                if isa(obj2,'double')||isa(obj2,'sym') ||isa(obj2,'char') % obj1*a
+                    obj_base = obj1;
+                    coef_tmp = sym(obj2);
+
+                elseif isa(obj1,'double')||isa(obj1,'sym') ||isa(obj1,'char') % a*obj2
+                    obj_base = obj2;
+                    coef_tmp = sym(obj1);
+                end
+                coef_new = obj_base.coef*coef_tmp;
+                obj_base.coef = coef_new;
+                obj = CombPO(obj_base);
+            end
+        end
+        % mtimes        
+
+        %% obj = mrdivide(obj1, obj2)
+        function obj = mrdivide(obj1, obj2) %obj1/obj2
+            if isa(obj2,'double')||isa(obj2,'sym') ||isa(obj2,'char') % obj1*a
+                obj_base = obj1;
+                coef_tmp = sym(obj2);
+            else          
+                error('PO-class object can''t not the be the divisor!')
+            end
+            coef_new = obj_base.coef/coef_tmp;
+            obj_base.coef = coef_new;
+            obj = CombPO(obj_base);
+        end
+        % mrdivide        
     end % methods
     
     methods (Static)
-       %% phout = phmod(phx,ii)
-       function phout = phmod(phx,ii)
+        %% phout = phmod(phx,ii)
+        function phout = phmod(phx,ii)
         % phout = phmod(phx,ii)
         % Read a phase value, phout, from a phase table, phx.
         % if ii is smaller or equal to length(phx), phout = phx(ii). 
@@ -1611,130 +2040,271 @@ classdef (InferiorClasses = {?sym}) PO
             end
             % phid is [1,2,3, ... length(phx)]
             phout = phx(phid);
-       end % phmod
+        end % phmod
        
-       %% ph_s = ph_num2str(ph_n)
-       function ph_s = ph_num2str(ph_n)
-        % ph_s = ph_num2str(ph_n)
-        % Conversion from quadrature phase number (ph_n = 0,1,2,3)
-        % to phase characters (ph_s = x,y,-x,-y)
-            if isa(ph_n,'char')
-                ph_s = ph_n;
-            else
-                if ph_n == 0
-                    ph_s = 'x';
-                elseif ph_n == 1
-                    ph_s = 'y';
-                elseif ph_n == 2
-                    ph_s = '-x';
-                elseif ph_n == 3
-                    ph_s = '-y';
+        %% ph_s = ph_num2str(ph_n)
+        function ph_s = ph_num2str(ph_n)
+            % ph_s = ph_num2str(ph_n)
+            % Conversion from quadrature phase number (ph_n = 0,1,2,3)
+            % to phase characters (ph_s = x,y,-x,-y)
+                if isa(ph_n,'char')
+                    ph_s = ph_n;
+                else
+                    if ph_n == 0
+                        ph_s = 'x';
+                    elseif ph_n == 1
+                        ph_s = 'y';
+                    elseif ph_n == 2
+                        ph_s = '-x';
+                    elseif ph_n == 3
+                        ph_s = '-y';
+                    end
+                end
+        end % ph_num2st
+       
+        %% coef = rec_coef(ph)
+        function coef = rec_coef(ph)
+            % coef = rec_coef(ph)
+            % ph is a quadrature phase ('x','X',0,'y','Y',1,...)
+            % then coef = exp(-1i*ph) = cos(ph) -1i*sin(ph)
+            % coef(0)      =  1
+            % coef(pi/2)   = -1i
+            % coef(pi)     = -1
+            % coef(pi*3/2) =  1i
+            % Spin Dynamics (2nd Ed.), p.287.
+                if strcmp(ph,'x')==1||strcmp(ph,'X')==1||(isa(ph,'double')&&ph == 0)
+                    coef = 1;
+                elseif strcmp(ph,'y')==1||strcmp(ph,'Y')==1||(isa(ph,'double')&&ph == 1)
+                    coef = -1i;
+                elseif strcmp(ph,'-x')==1||strcmp(ph,'-X')==1||(isa(ph,'double')&&ph == 2)
+                    coef = -1;
+                elseif strcmp(ph,'-y')==1||strcmp(ph,'-Y')==1||(isa(ph,'double')&&ph == 3)
+                    coef = 1i;
+                end 
+        end % rec_coef              
+       
+        %% M_out = axis2M(axis_v, sqn)
+        function M_out = axis2M(axis_v, sqn)
+            % M_out = axis2M(axis_v, sqn)
+            % axis_v is a value for PO.axis, i.e., 0, 1, 2, 3
+            % sqn is spin quantum number (Symbolic)
+            % Currently, only sqn = sym(1/2) works.
+            % M_out is 1/2*Pauli matrix (Symbolic)
+            % (axis_v = 0 for s0 (E), 1 for s1(sx), 2 for s2(sy) and 3 for s3(sz))
+
+            if nargin == 1
+                sqn = sym(1/2);
+            end
+            
+            if sqn == sym(1/2)
+                if axis_v == 0% 1/2 E
+                    M_tmp = 1/2*[1 0;0 1];
+                elseif axis_v == 1% x
+                    M_tmp = 1/2*[0 1;1 0];
+                elseif axis_v == 2% y
+                    M_tmp = 1/(2*1i)*[0 1;-1 0];
+                elseif axis_v == 3% z
+                    M_tmp = 1/2*[1 0;0 -1];
+                elseif axis_v == 4% p
+                        M_tmp = [0 1;0 0];
+                elseif axis_v == 5% m
+                        M_tmp = [0 0;1 0];
+                elseif axis_v == 6% a
+                        M_tmp = [1 0;0 0];
+                elseif axis_v == 7% b
+                        M_tmp = [0 0;0 1];
                 end
             end
-       end % ph_num2st
-       
-       %% coef = rec_coef(ph)
-       function coef = rec_coef(ph)
-        % coef = rec_coef(ph)
-        % ph is a quadrature phase ('x','X',0,'y','Y',1,...)
-        % then coef = exp(-1i*ph) = cos(ph) -1i*sin(ph)
-        % coef(0)      =  1
-        % coef(pi/2)   = -1i
-        % coef(pi)     = -1
-        % coef(pi*3/2) =  1i
-        % Spin Dynamics (2nd Ed.), p.287.
-            if strcmp(ph,'x')==1||strcmp(ph,'X')==1||(isa(ph,'double')&&ph == 0)
-                coef = 1;
-            elseif strcmp(ph,'y')==1||strcmp(ph,'Y')==1||(isa(ph,'double')&&ph == 1)
-                coef = -1i;
-            elseif strcmp(ph,'-x')==1||strcmp(ph,'-X')==1||(isa(ph,'double')&&ph == 2)
-                coef = -1;
-            elseif strcmp(ph,'-y')==1||strcmp(ph,'-Y')==1||(isa(ph,'double')&&ph == 3)
-                coef = 1i;
-            end 
-       end % rec_coef              
-       
-       %% M_out = axis2M(axis_v, sqn)
-       function M_out = axis2M(axis_v, sqn)
-        % M_out = axis2M(axis_v, sqn)
-        % axis_v is a value for PO.axis, i.e., 0, 1, 2, 3
-        % sqn is spin quantum number (Symbolic)
-        % Currently, only sqn = sym(1/2) works.
-        % M_out is 1/2*Pauli matrix (Symbolic)
-        % (axis_v = 0 for s0 (E), 1 for s1(sx), 2 for s2(sy) and 3 for s3(sz))
+            %   M_out = sym(M_tmp);
+            M_out = M_tmp; % Output as double. It is converted to sym in get.M().
+        end % axis2M
 
-          if nargin == 1
-              sqn = sym(1/2);
-          end
-          
-          if sqn == sym(1/2)
-              if axis_v == 0% 1/2 E
-                  M_tmp = 1/2*[1 0;0 1];
-              elseif axis_v == 1% x
-                 M_tmp = 1/2*[0 1;1 0];
-              elseif axis_v == 2% y
-                 M_tmp = 1/(2*1i)*[0 1;-1 0];
-              elseif axis_v == 3% z
-                 M_tmp = 1/2*[1 0;0 -1];
-              elseif axis_v == 4% p
-                    M_tmp = [0 1;0 0];
-              elseif axis_v == 5% m
-                    M_tmp = [0 0;1 0];   
-              end
-          end
-        %   M_out = sym(M_tmp);
-          M_out = M_tmp; % Output as double. It is converted to sym in get.M().
-       end % axis2M
-
-       %% rho = rho_box(n)
-       function rho = rho_box(n)
-        % Calculation of "box notation" of the density oeprator, rho.
-        % a: alpha state
-        % b: beta state
-        % m: a => b coherence
-        % p: b => a coherence
-        % Spin Dynamics p. 470, p. 260, p. 160
-        n_s = 2^n;
-        dec = n_s-1:-1:0;
+        %% rho = rho_box(n)
+        function rho = rho_box(n)
+            % Calculation of "box notation" of the density oeprator, rho.
+            % a: alpha state
+            % b: beta state
+            % m: a => b coherence
+            % p: b => a coherence
+            % Spin Dynamics p. 470, p. 260, p. 160
+            n_s = 2^n;
+            dec = n_s-1:-1:0;
+        
+            bin_mat = de2bi(dec,n,'left-msb');
+            % bin_mat = dec2bin(dec,n) - '0';
+            % % a: 1, b: 0
+            % % a a a = 1 1 1
+            % % a a b = 1 1 0
+            % % a b a = 1 0 1
+            % % a b b = 1 0 0s
+            % % b a a = 0 1 1
+            % % b a b = 0 1 0
+            % % b b a = 0 0 1
+            % % b b b = 0 0 0
+        
+            rho_cell = cell(n_s,n_s);
+            % rho(c,r) = <c|rho|r>
+            % Since the spin state should be read from right to left,
+            % rho(c,r) correspond to |c> => |r>
+            % Spin Dynamics, p. 470.
     
-        bin_mat = de2bi(dec,n,'left-msb');
-        % bin_mat = dec2bin(dec,n) - '0';
-        % % a: 1, b: 0
-        % % a a a = 1 1 1
-        % % a a b = 1 1 0
-        % % a b a = 1 0 1
-        % % a b b = 1 0 0
-        % % b a a = 0 1 1
-        % % b a b = 0 1 0
-        % % b b a = 0 0 1
-        % % b b b = 0 0 0
-     
-        rho_cell = cell(n_s,n_s);
-        % rho(c,r) = <c|rho|r>
-        % Since the spin state should be read from right to left,
-        % rho(c,r) correspond to |c> => |r>
-        % Spin Dynamics, p. 470.
- 
-        for ii = 1:n_s% row
-            for jj = 1:n_s% column
-                r_vec = bin_mat(ii,:);%|r>
-                c_vec = bin_mat(jj,:);%|c>
-                rho_vec = r_vec - c_vec;% To know |c> => |r>  
-                
-                p_id = find(rho_vec == 1);% p
-                m_id = find(rho_vec == -1);% m
-                a_id = find(c_vec == 1);% a
-                rho_tmp = char(double('b')*ones(1,n));
-                rho_tmp(a_id) = 'a';% 'abaa..' style of c_vec
-                rho_tmp(p_id) = 'p';%
-                rho_tmp(m_id) = 'm';%
+            for ii = 1:n_s% row
+                for jj = 1:n_s% column
+                    r_vec = bin_mat(ii,:);%|r>
+                    c_vec = bin_mat(jj,:);%|c>
+                    rho_vec = r_vec - c_vec;% To know |c> => |r>  
+                    
+                    % p_id = find(rho_vec == 1);% p
+                    % m_id = find(rho_vec == -1);% m
+                    % a_id = find(c_vec == 1);% a
 
-            rho_cell{ii,jj} = rho_tmp;
+                    rho_tmp = char(double('b')*ones(1,n));
+                    rho_tmp(c_vec == 1) = 'a';% 'abaa..' style of c_vec
+                    rho_tmp(rho_vec == 1) = 'p';%
+                    rho_tmp(rho_vec == -1) = 'm';%
+
+                    % rho_tmp(a_id) = 'a';% 'abaa..' style of c_vec
+                    % rho_tmp(p_id) = 'p';%
+                    % rho_tmp(m_id) = 'm';%
+
+                rho_cell{ii,jj} = rho_tmp;
+                end
+            end
+            rho = sym(rho_cell);
+        end
+        % rho = rho_box(n)
+
+        %% create(spin_label_cell)
+        function create(spin_label_cell, symcoef_switch)
+            %% Spin Operators
+            spin_no = length(spin_label_cell);
+            for ii = 1:spin_no
+                for jj = 1:7
+                    if jj == 1
+                        sp = [spin_label_cell{ii} 'x'];
+                    elseif jj == 2
+                        sp = [spin_label_cell{ii} 'y'];
+                    elseif jj == 3
+                        sp = [spin_label_cell{ii} 'z'];
+                    elseif jj == 4
+                        sp = [spin_label_cell{ii} 'p'];
+                    elseif jj == 5
+                        sp = [spin_label_cell{ii} 'm'];
+                    elseif jj == 6
+                        sp = [spin_label_cell{ii} 'a'];
+                    elseif jj == 7
+                        sp = [spin_label_cell{ii} 'b'];
+                    end
+                    obj = PO(spin_no,{sp},{1},spin_label_cell);
+                    assignin('base',sp,obj);
+                end
+            end
+            obj = PO(spin_no,{'1'},{1},spin_label_cell);
+            assignin('base','hE',obj);
+
+            if nargin == 1
+                symcoef_switch = 'off';
+            end
+
+            switch symcoef_switch
+                case {'y','on'}
+                    PO.symcoef(spin_label_cell)
             end
         end
-        rho = sym(rho_cell);
-    end
-    % rho = rho_box(n)
+        % create
+
+        %% symcoef(spin_label_cell)
+        function symcoef(spin_label_cell,add_cell)
+            % Create pre-set Symbolic Coefficients
+
+            spin_no = length(spin_label_cell);
+            % frequency o
+            for ii = 1:spin_no
+                sp = spin_label_cell{ii};
+
+                varname = ['o' sp];
+                assignin('base',varname,sym(varname));
+
+                varname = ['o' sp(1)];
+                if exist(varname,'var') == 0
+                    assignin('base',varname,sym(varname));
+                end
+
+                varname = ['o' sp(end)];
+                if exist(varname,'var') == 0
+                    assignin('base',varname,sym(varname));
+                end
+
+                varname = ['o' num2str(ii)];
+                if exist(varname,'var') == 0
+                    assignin('base',varname,sym(varname));
+                end
+            end
+
+            % coupling J
+            for ii = 1:spin_no
+                for jj = 1:spin_no
+                    if ii < jj
+                        sp_ii = spin_label_cell{ii};
+                        sp_jj = spin_label_cell{jj};
+
+                        varname = ['J' sp_ii sp_jj];
+                        assignin('base',varname,sym(varname));
+
+                        varname = ['J' sp_ii(1) sp_jj(1)];
+                        if exist(varname,'var') == 0
+                            assignin('base',varname,sym(varname));
+                        end
+
+                        varname = ['J' sp_ii(end) sp_jj(end)];
+                        if exist(varname,'var') == 0
+                            assignin('base',varname,sym(varname));
+                        end
+
+                        varname = ['J' num2str(ii) num2str(jj)];
+                        if exist(varname,'var') == 0
+                            assignin('base',varname,sym(varname));
+                        end
+                    end
+                end
+            end
+
+            % gyromagnetic ratio g
+            for ii = 1:spin_no
+                sp = spin_label_cell{ii};
+
+                varname = ['g' sp];
+                assignin('base',varname,sym(varname));
+
+                varname = ['g' sp(1)];
+                if exist(varname,'var') == 0
+                    assignin('base',varname,sym(varname));
+                end
+
+                varname = ['g' sp(end)];
+                if exist(varname,'var') == 0
+                    assignin('base',varname,sym(varname));
+                end
+
+                varname = ['g' num2str(ii)];
+                if exist(varname,'var') == 0
+                    assignin('base',varname,sym(varname));
+                end
+            end
+
+            symcoef_list = {'a' 't1' 't' 'q' 'B' 'd' 'G'};
+            if nargin == 1
+                add_cell = {};
+            end
+            symcoef_list = [symcoef_list add_cell];
+            for ii = 1:length(symcoef_list)
+                varname = symcoef_list{ii};
+                if exist(varname,'var') == 0
+                    assignin('base',varname,sym(varname));
+                end
+            end
+        end
+        % symcoef
       
     end % methods (Static)
 end % classdef
