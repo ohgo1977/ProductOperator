@@ -26,4 +26,4 @@ rho = rho.simcs({'I' 'S'},{oI*t oS*t});
 rho = rho.simpulse({'I' 'S'},{'y' 'y'},{pi/2 pi/2});
 
 phR = 0;
-[a0_V,rho_V] = rho.SigAmp('IS',phR);
+[a0_V,rho_V] = rho.SigAmp({'I' 'S'},phR);

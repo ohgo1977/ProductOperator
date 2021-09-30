@@ -15,7 +15,7 @@ switch InS
         rho = simpulse(rho,{'I' 'S'},{'y' 'y'},{1/2*pi 1/2*pi});
         rho = simpulse(rho,{'I' 'S'},{'x' 'x'},{pi pi});
         rho = jc(rho,'IS',pi*J*t);
-        a0_V = rho.SigAmp('S','y');
+        a0_V = rho.SigAmp({'S'},'y');
 
     case 'I2S'
         % I2S system
@@ -26,7 +26,7 @@ switch InS
         rho = simpulse(rho,{'I*' 'S3'},{'y' 'y'},{1/2*pi 1/2*pi});
         rho = simpulse(rho,{'I*' 'S3'},{'x' 'x'},{pi pi});
         rho = simjc(rho,{'I1S3' 'I2S3'},{pi*J*t pi*J*t});
-        a0_V = rho.SigAmp('S3','y');
+        a0_V = rho.SigAmp({'S3'},'y');
         
     case 'I3S'
         % I3S system
@@ -37,5 +37,5 @@ switch InS
         rho = simpulse(rho,{'I*' 'S4'},{'y' 'y'},{1/2*pi 1/2*pi});
         rho = simpulse(rho,{'I*' 'S4'},{'x' 'x'},{pi pi});
         rho = simjc(rho,{'I1S4' 'I2S4' 'I3S4'},{pi*J*t pi*J*t pi*J*t});
-        a0_V = rho.SigAmp('S4','y');
+        a0_V = rho.SigAmp({'S4'},'y');
 end

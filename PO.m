@@ -34,7 +34,7 @@
 
 %%
 classdef (InferiorClasses = {?sym}) PO
-% Override some operators of sym class
+% Overloading of some functions of sym class
     %%    
     properties
         axis        % Showing the status of axis direction for each spin.
@@ -49,20 +49,24 @@ classdef (InferiorClasses = {?sym}) PO
 
         disp = 1    % Control the display of the applied method on the monitor. 1: On, 2: Off
 
+        basis       % String value to distinguish the basis-status in the calculations ('xyz', 'pmz' or 'pol')
+                    % Ideally it should be protected but sitll visible to users.
+
     end
     
     %%
     properties (Access = protected)
         bracket % Binary value to indicate cases with (a+b) or (a-b) type coefficient (1: yes, 0: no)
 
-        basis   % String value to distinguish the basis-status in the calculations ('xyz' or 'pmz')
-                % Ideally it should be visible to users (but still protected).
-                % dispProp(obj,'basis') can be used to check this property.
+        % basis   % String value to distinguish the basis-status in the calculations ('xyz' or 'pmz')
+        %         % Ideally it should be visible to users (but still protected).
+        %         % dispProp(obj,'basis') can be used to check this property.
 
         SimplifySteps = 10
                 % Number of steps used for simplify() in CombPO().
                 % This prorperty can be changed from set_SimplifySteps().
     end
+
     
     %%
     properties (Dependent)
@@ -73,26 +77,26 @@ classdef (InferiorClasses = {?sym}) PO
         txt         % Text output of Product Operators (String)
         M           % Matrix Form
         coherence   % Populations (diagonal) and coherences (off-diagonal) of a density operator
+        % basis_info  % Display basis
     end
     
     %%
     properties (Constant = true)
         sqn = sym(1/2);% Spin Quantum Number
-
     end
     
     %%
     methods
-        %% Ncoef_cnst = get.Ncoef(obj)
-        function Ncoef_cnst = get.Ncoef(obj)
+        %% Ncoef_out = get.Ncoef(obj)
+        function Ncoef_out = get.Ncoef(obj)
             if strcmp(obj.basis, 'xyz')% Cartesian operator basis
-                Ncoef_cnst = sym(2.^(sum((obj.axis~=0),2)-1));
+                Ncoef_out = sym(2.^(sum((obj.axis~=0),2)-1));
                 % 2^(Ns-1) 
                 % Examples 
                 % IxSx   => Ns = 2 => Ncoef = 2
                 % IxSxKx => Ns = 3 => Ncoef = 4
             elseif strcmp(obj.basis, 'pmz') || strcmp(obj.basis, 'pol')% Raising/Lowering  operator basis
-                Ncoef_cnst = sym(ones(size(obj.axis,1),1));% Ncoef = 1
+                Ncoef_out = sym(ones(size(obj.axis,1),1));% Ncoef = 1
             end
         end % get.Ncoef
         
@@ -172,7 +176,8 @@ classdef (InferiorClasses = {?sym}) PO
                         M_tmp = kron(M_tmp, Ma);% Kronecker tensor product
                     end
                 end
-                
+                % M_tmp is a double class
+                % Mo is a symbolic class because coef, Ncoef are symbolic.
                 Mo = M_tmp*obj.coef(ii)*obj.Ncoef(ii)*2^length(find(axis_tmp == 0));
                     % Example
                     % 2IxSz in 4-spin system (ISKL) (axis_tmp = [1 3 0 0])
@@ -196,6 +201,13 @@ classdef (InferiorClasses = {?sym}) PO
             coherence_out = PO.rho_box(spin_no);
             coherence_out(obj.M == 0) = 0;
         end
+
+        % %% basis_info_out = get.basis_info(obj)
+        % function basis_info_out = get.basis_info(obj)
+        %     % Display obj.basis
+        %     basis_info_out = obj.basis;
+        % end
+        % % get.basis_info
 
         %% obj = PO(spin_no,sp_cell,coef_cell,spin_label_cell)
         function obj = PO(spin_no,sp_cell,coef_cell,spin_label_cell) 
@@ -227,7 +239,7 @@ classdef (InferiorClasses = {?sym}) PO
             % In this case, sp_cell should be
             % sp_cell = {'I1x' 'I1yS4z'}
             % Note: there should be no overlap of strings among the members of spin_label_cell.
-            % For example, Both 'I1' and 'I12' have 'I1'. This causes an error.
+            % For example, Both 'I1' and 'I12' have the string 'I1'. This causes an error.
             %
 
             if nargin > 0 % This condition allows to create an empty PO object by obj = PO();
@@ -235,15 +247,15 @@ classdef (InferiorClasses = {?sym}) PO
                 coef_out = [];
                 bracket_out = [];
 
-                 if nargin <= 3
-                    spin_label_cell = {'I' 'S' 'K' 'L' 'M'}; % Default spin_label
-                  end
+                if nargin <= 3
+                spin_label_cell = {'I' 'S' 'K' 'L' 'M'}; % Default spin_label
+                end
 
-                  if length(spin_label_cell) < spin_no % Abort spin_label_cell is not large enough.
-                    error('the size of spin_label_cell must be same as or bigger than spin_no');
-                  end
+                if length(spin_label_cell) < spin_no % Abort spin_label_cell is not large enough.
+                error('the size of spin_label_cell must be same as or bigger than spin_no');
+                end
 
-                  spin_label_cell = spin_label_cell(1:spin_no);% Adjust the size of spin_label_cell to spin_no. 
+                spin_label_cell = spin_label_cell(1:spin_no);% Adjust the size of spin_label_cell to spin_no. 
 
                 for ii = 1:max(size(sp_cell))
                     sp = sp_cell{ii};
@@ -289,9 +301,9 @@ classdef (InferiorClasses = {?sym}) PO
                    end
                 end
 
-                if isempty(find(axis_out == 4,1)) && isempty(find(axis_out == 5,1)) && isempty(find(axis_out == 6,1)) && isempty(find(axis_out == 7,1))% Cartesian operator basis
+                if isempty(find(axis_out == 4,1)) && isempty(find(axis_out == 5,1)) && isempty(find(axis_out == 6,1)) && isempty(find(axis_out == 7,1))
                     basis_out = 'xyz';
-                elseif isempty(find(axis_out == 1,1)) && isempty(find(axis_out == 2,1)) && isempty(find(axis_out == 6,1)) && isempty(find(axis_out == 7,1))% Raising/Lowering operator basis
+                elseif isempty(find(axis_out == 1,1)) && isempty(find(axis_out == 2,1)) && isempty(find(axis_out == 6,1)) && isempty(find(axis_out == 7,1))
                     basis_out = 'pmz';
                 elseif isempty(find(axis_out == 1,1)) && isempty(find(axis_out == 2,1))
                     basis_out = 'pol';
@@ -305,20 +317,19 @@ classdef (InferiorClasses = {?sym}) PO
                 obj.spin_label = spin_label_cell;
                 obj.bracket = bracket_out;% 1: put bracket if coefficient is a sum-form.
                 obj.basis = basis_out;
+
                 obj = CombPO(obj);
             end
         end % PO
         
-        %%obj = CombPO(obj)
+        %% obj = CombPO(obj)
         function obj = CombPO(obj)
             % obj = CombPO(obj)
             % Combines coeffcieints of same type of terms in a PO-class object.
             % Also detects coefficients in which parentheses should be added and puts a flag in obj.bracket.
         
-            % tic;
             axis_in = obj.axis;
-            [~,IA,IC] = unique(axis_in,'rows');
-        
+            [~,IA,IC] = unique(axis_in,'rows');        
             % Example
             % axis_in = [1 0 0; % Row 1
             %           0 2 3;  % Row 2
@@ -339,9 +350,7 @@ classdef (InferiorClasses = {?sym}) PO
             coef_out = sym(zeros(length(IA),1));
             axis_out = zeros(length(IA),size(axis_in,2));
             bracket_out = zeros(length(IA),1);
-            % et0 = toc;
         
-            % tic;
             for ii = 1:length(IA)
                IA_tmp = IA(ii);
                IC_tmp = find(IC == IC(IA_tmp));% IMPORTANT!!
@@ -355,14 +364,11 @@ classdef (InferiorClasses = {?sym}) PO
                 axis_out(ii,:) = axis_in(IA_tmp,:);
                 coef_out(ii) = sum(obj.coef(IC_tmp));     
             end
-            % et1 = toc;
 
-            % tic;
-            coef_out = simplify(coef_out, 'Steps', obj.SimplifySteps);% Simplify in one-step.
-            % et2 = toc;
+            coef_out = simplify(coef_out, 'Steps', obj.SimplifySteps);% Simplify with obj.SimplifySteps steps.
 
-            % tic;
-            syms A_dummy % Use "A" as a first charcter so that A_dummy comes before other alphabets.
+            A_dummy = sym('A_dummy'); % Use "A" as a first charcter so that A_dummy comes before other alphabets.
+            % syms A_dummy % Use "A" as a first charcter so that A_dummy comes before other alphabets.
                          % High time-cost; This line should be out of the loop. 
             dummy_p_mat = A_dummy*coef_out;
             char_A_dummy = char(A_dummy);
@@ -387,9 +393,7 @@ classdef (InferiorClasses = {?sym}) PO
                 end
                 bracket_out(ii) = bracket_tmp;
             end
-            % et3 = toc;
 
-            % tic;
             % Remove terms with 0 coefficients
             if isempty(find(coef_out ~= sym(0),1)) % Only zero values in coef_out, then set as 0*1/2E. 
                 id_vec = 1;
@@ -398,9 +402,7 @@ classdef (InferiorClasses = {?sym}) PO
             else
                 id_vec = find(coef_out ~= sym(0));
             end
-            % et4 = toc;
-        
-            % tic;
+
             % To use spin_label and display in the input obj,
             % obj = PO() shoud not be used here.
             axis_out = axis_out(id_vec,:);
@@ -413,17 +415,7 @@ classdef (InferiorClasses = {?sym}) PO
             obj.axis = axis_sort;
             obj.coef = coef_out(id_sort,:);
             obj.bracket = bracket_out(id_sort,:);
-            % et5 = toc;
 
-            % et_total = et0 + et1 + et2 + et3 + et4 + et5;
-            % fprintf(1,'et0:%5.1f %% %5.0f ms\n',et0/et_total*100,1000*et0)
-            % fprintf(1,'et1:%5.1f %% %5.0f ms\n',et1/et_total*100,1000*et1)
-            % fprintf(1,'et2:%5.1f %% %5.0f ms\n',et2/et_total*100,1000*et2)
-            % fprintf(1,'et3:%5.1f %% %5.0f ms\n',et3/et_total*100,1000*et3)
-            % fprintf(1,'et4:%5.1f %% %5.0f ms\n',et4/et_total*100,1000*et4)
-            % fprintf(1,'et5:%5.1f %% %5.0f ms\n',et5/et_total*100,1000*et5)
-            % fprintf(1,'et_CombPO : %5.0f ms\n',1000*et_total)
-            % fprintf(1,'\n');
         end %CombPO
 
         % obj = xyz2pmz(obj)
@@ -454,7 +446,7 @@ classdef (InferiorClasses = {?sym}) PO
                     xyn = 2^(xn + yn);
                     axis_out_tmp = repmat(axis_tmp,xyn,1); % repmat([1 2 1 3],8,1)
                     axis_out_tmp(axis_out_tmp == 1) = 0;   % Remove x operators
-                    axis_out_tmp(axis_out_tmp == 2) = 0;   % Remove y operators
+                    axis_out_tmp(axis_out_tmp == 2) = 0;   % Remove y operators => [0 0 0 3; 0 0 0 3;... 0 0 0 3]
                     coef_out_tmp = ones(xyn,1);
             
                     dec = 0:xyn - 1;
@@ -546,9 +538,9 @@ classdef (InferiorClasses = {?sym}) PO
 
                 else
                     % Conversion from Ip and Im to Ix and Iy
-                    xn = length(find(axis_tmp == 4));
-                    yn = length(find(axis_tmp == 5));
-                    zn = length(find(axis_tmp == 3));
+                    xn = length(find(axis_tmp == 4));% p
+                    yn = length(find(axis_tmp == 5));% m
+                    zn = length(find(axis_tmp == 3));% z
                     xyn = 2^(xn + yn);
                     axis_out_tmp = repmat(axis_tmp,xyn,1);
                     axis_out_tmp(axis_out_tmp == 4) = 0; % Remove Ip
@@ -582,9 +574,9 @@ classdef (InferiorClasses = {?sym}) PO
                 end
                 axis_out = [axis_out;axis_out_tmp];
                 coef_out_tmp = coef_out_tmp*coef_in(ii)*Ncoef_in(ii)*(1/2)^(xn + yn +zn - 1);
-                % From 1*IpSpIz*1, IxSxIz IxSyIz etc. are created.
+                % From 1*IpSpIz*1 (Ncoef =1, coef =1), IxSxIz IxSyIz etc. are created.
                 % Then Ncoef for IxSxIz in xyz-basis is calculated as 4 automatically. 
-                % To compensate 4 in Ncoef, it is necessary to apply (1/2)*(xn + yn + zn -1) to a new coef.
+                % To compensate 4 in the new Ncoef, it is necessary to apply (1/2)*(xn + yn + zn -1) to the new coef.
                 % In this case (1/2)*(xn + yn + zn -1) = (1/2)*(2 + 0 + 1 -1) = 1/4.
                 % This line is a main difference from the one in xyz2pmz().                    
                 coef_out = [coef_out;coef_out_tmp];
@@ -628,12 +620,7 @@ classdef (InferiorClasses = {?sym}) PO
             for ii = 1:size(axis_in,1)
                 axis_tmp = axis_in(ii,:);
 
-                % Conversion from Ix and Iy to Ip and Im
-                % xn = length(find(axis_tmp == 1)); % Example: IxSyKxMz =>(Ip + Im)(Sp - Sm)(Kp + Km)Mz
-                % yn = length(find(axis_tmp == 2)); % xn =2, yn = 1 => 2^(2+1) = 8 terms.
-                % zn = length(find(axis_tmp == 3));
-                % en = length(find(axis_tmp == 0));
-                % xyzen = 2^(xn + yn + zn + en);
+                % Conversion from Ix, Iy, Iz and E to Ip, Im, Ia and Ib
                 xyzen = 2^spin_no;
 
                 coef_out_tmp = ones(xyzen,1);
@@ -672,7 +659,7 @@ classdef (InferiorClasses = {?sym}) PO
                     elseif axis_v == 0 % hE = 1/2*Ia + 1/2*Ib
                         c_tmp(bin_vec == 6) =  1/2;
                         c_tmp(bin_vec == 7) =  1/2;
-                    % elseif axis_v == 0 % E = Ia + Ib
+                    % E = Ia + Ib
                     %     c_tmp(bin_vec == 6) =  1;
                     %     c_tmp(bin_vec == 7) =  1;                                  
                     end
@@ -682,7 +669,24 @@ classdef (InferiorClasses = {?sym}) PO
                 % Combine terms
                 axis_out = [axis_out;axis_out_tmp];
                 coef_out_tmp = coef_out_tmp*coef_in(ii)*2^(spin_no - 1);
+                
+                % If the lines above
+                % c_tmp(bin_vec == 6) =  1;
+                % c_tmp(bin_vec == 7) =  1; 
+                % are used, 
+                % coef_out_tmp should be calculated as
                 % coef_out_tmp = coef_out_tmp*coef_in(ii)*Ncoef_in(ii);
+                %
+                % (1/2)^spin_no*2^(spin_no - 1) = 2^-1
+                % vs.
+                % (1/2)^(spin_no - sum(axis == 0))*2^(sum(axis ~= 0) -1) =
+                % 2^(sum(axis == 0) - spin_no + sum(axis ~= 0) -1) = 2^-1
+                %
+                % Example
+                % [1 2 0 3 0]
+                % 1/2*1/2*1/2*1/2*1/2*2^(spin_no - 1) = (1/2)^5*2^4 = 2^-1
+                % 1/2*1/2*1*1/2*1*Ncoef_in = (1/2)^3*2^2 = 2^-1
+
                 coef_out = [coef_out;coef_out_tmp];
             end % ii
         
@@ -727,9 +731,9 @@ classdef (InferiorClasses = {?sym}) PO
 
                 coef_out_tmp = ones(xyzen,1);
         
-                % Need to consider the case of Ia for multiple spins.
+                % Need to consider the case of Ia or Ip in multiple spins.
                 % For example, Ia in three-spin system is [6 0 0] created by PO().
-
+                % 0 in pol is converted to 0 in xyz.
                 dec = 0:xyzen - 1;
                 bin_mat = de2bi(dec,spin_no,'left-msb');
                 for jj = 1:spin_no
@@ -741,7 +745,7 @@ classdef (InferiorClasses = {?sym}) PO
                         bin_mat (bin_mat(:, jj) == 0, jj) = 3; % z
                         bin_mat (bin_mat(:, jj) == 1, jj) = 0; % hE
                     else
-                        bin_mat(:,jj) = 0;
+                        bin_mat(:,jj) = 0; % 0,1 => 0
                     end
                 end
 
@@ -769,12 +773,13 @@ classdef (InferiorClasses = {?sym}) PO
                 end
                 
                 axis_out = [axis_out;axis_out_tmp];
-                coef_out_tmp = coef_out_tmp*coef_in(ii)*Ncoef_in(ii)*(1/2)^(spin_no-1);
-                % IpSpKa creates IxSxKz, IxSxhE = 1/2*IxSx, ....
-                % After the automatic calculation of Ncoef, these terms become 
-                % 4*IxSxKz instead of IxSxkz
-                % 2*IxSx   instead of 1/2*IxSx.
-                % To compensate the difference, it is necessary to apply (1/2)^(spin_no-1).
+                % coef_out_tmp = coef_out_tmp*coef_in(ii)*Ncoef_in(ii)*(1/2)^(spin_no-1);
+                coef_out_tmp = coef_out_tmp*coef_in(ii)*(1/2)^(spin_no-1);
+                % IpSpKa creates IxSxKz, IxSxhE (= 1/2*IxSx), ....
+                % With the automatic calculation of the new Ncoef, these terms become 
+                % 4*IxSxKz instead of 1*IxSxkz (4:1) 
+                % 2*IxSx   instead of 1/2*IxSx. (2:1/2 = 4:1)
+                % To compensate the difference, it is necessary to apply (1/2)^(spin_no-1) to new coef.
                     
                 coef_out = [coef_out;coef_out_tmp];
             end
@@ -806,6 +811,7 @@ classdef (InferiorClasses = {?sym}) PO
 
             obj = pmz2xyz(obj);
             obj = xyz2pol(obj);
+            % Future version: direct conversin from pmz to pol
         end
         % pmz2pol
 
@@ -817,15 +823,18 @@ classdef (InferiorClasses = {?sym}) PO
 
             obj = pol2xyz(obj);
             obj = xyz2pmz(obj);
+            % Future version: direct conversin from pmz to pol
         end
         % pol2pmz
 
         %% obj = UrhoUinv(obj,H,q)
         function obj = UrhoUinv(obj,H,q)
             % obj = UrhoUinv(obj,H,q)
-            % Calculation of the evolution of rho under H based on the cyclic
+            % Calculation of the evolution of rho under q*H based on the cyclic
             % commutations. No matrix calculation is used.
+            %
             % obj, H: PO class objects with xyz-basis.
+            % The size of H.axis should be [1,n], i.e., only single term.
             % q: angle in radian (symbolic or double)
             
             % Master Table of Cyclic Commutation
@@ -843,8 +852,7 @@ classdef (InferiorClasses = {?sym}) PO
             % If C is 0, no actions
             % If C is a negative value, change the sign of PO.coef.
 
-            % tic;
-            if strcmp(obj.basis,'pmz') || strcmp(H.basis,'pmz')
+            if strcmp(obj.basis,'pmz') || strcmp(H.basis,'pmz') || strcmp(obj.basis,'pol') || strcmp(H.basis,'pol') 
                 error('The basis of the object should be xyz')
             end
 
@@ -928,11 +936,6 @@ classdef (InferiorClasses = {?sym}) PO
             obj.axis = axis_new;
             obj.coef = coef_new;
             obj.bracket = zeros(size(obj.coef));
-
-            % et = toc;
-            % fprintf(1,'et_UrhoUinv : %5.0f ms\n',1000*et)
-            % fprintf(1,'\n');
-
             obj = CombPO(obj);
         end % UrhoUinv
         
@@ -951,6 +954,9 @@ classdef (InferiorClasses = {?sym}) PO
             if strcmp(obj.basis,'pmz')
                 obj =  pmz2xyz(obj);% Conversion to xyz
                 basis_org = 'pmz';
+            elseif strcmp(obj.basis,'pol')
+                obj =  pol2xyz(obj);% Conversion to xyz
+                basis_org = 'pol';
             end
 
             axis_tmp = zeros(1,size(obj.axis,2));
@@ -992,7 +998,9 @@ classdef (InferiorClasses = {?sym}) PO
             obj = UrhoUinv(obj,H,q);
 
             if strcmp(basis_org,'pmz')
-                obj =  xyz2pmz(obj);% Conversion to pmz if the input obj is with pmz-basis.
+                obj =  xyz2pmz(obj);
+            elseif strcmp(basis_org,'pol')
+                obj =  xyz2pol(obj);
             end
 
             if isa(q,'sym') == 1
@@ -1061,6 +1069,9 @@ classdef (InferiorClasses = {?sym}) PO
             if strcmp(obj.basis,'pmz')
                 obj =  pmz2xyz(obj);% Conversion to xyz
                 basis_org = 'pmz';
+            elseif strcmp(obj.basis,'pol')
+                obj =  pol2xyz(obj);% Conversion to xyz
+                basis_org = 'pol';
             end
 
             axis_tmp = zeros(1,size(obj.axis,2));
@@ -1138,6 +1149,9 @@ classdef (InferiorClasses = {?sym}) PO
             if strcmp(obj.basis,'pmz')
                 obj =  pmz2xyz(obj);% Conversion to xyz
                 basis_org = 'pmz';
+            elseif strcmp(obj.basis,'pol')
+                obj =  pol2xyz(obj);% Conversion to xyz
+                basis_org = 'pol';
             end
 
             axis_tmp = zeros(1,size(obj.axis,2));
@@ -1255,12 +1269,13 @@ classdef (InferiorClasses = {?sym}) PO
             % 3. Rotation  ph along Z axis.
             %
             % In the case of matrix calculation, 
-            % expm(-1i*q*(Ix*cos(ph) + Iy*sin(ph)))*rho*expm(1i*q*(Ix*cos(ph) + Iy*sin(ph))) 
+            % expm(-1i*q*(Ix*cos(ph) + Iy*sin(ph)))*rho*expm(1i*q*(Ix*cos(ph) + Iy*sin(ph))).
             % is equivalent to 
             % expm(-1i*ph*Iz)*expm(-1i*q*Ix)*expm(-1i*-ph*Iz)*rho*expm(1i*ph*Iz)*expm(1i*q*Ix)*expm(1i*-ph*Iz)
-            % However,
+            %
+            % Note that
             % expm(-1i*q*(Ix*cos(ph) + Iy*sin(ph)))*rho*expm(1i*q*(Ix*cos(ph) + Iy*sin(ph))) 
-            % is not equivalent to
+            % cannot be described as
             % expm(-1i*q*Ix*cos(ph))*expm(-1i*q*Iy*cos(ph))*rho*expm(1i*q*Ix*cos(ph))*expm(1i*q*Iy*cos(ph)), 
             % because [Ix,Iy] ~= 0.
 
@@ -1342,9 +1357,9 @@ classdef (InferiorClasses = {?sym}) PO
             obj = obj_tmp;
         end % pfg        
         
-        %% a0_V = SigAmp(obj,sp,phR)
-        function [a0_V,rho_V] = SigAmp(obj,sp,phR)
-            % a0_V = SigAmp(obj,sp,phR)
+        %% a0_V = SigAmp1(obj,sp,phR)
+        function [a0_V,rho_V] = SigAmp1(obj,sp,phR)
+            % a0_V = SigAmp1(obj,sp,phR)
             % Calculation of initial signal amplitudes (t=0) in the equation
             % s(t) = 2*i*(rho[-b](t) + rho[-a](t) + rho[b-](t) + rho[a-](t))*exp(-i*phrec)
             % Spin Dynamics (2nd Ed.), p.379.
@@ -1410,12 +1425,11 @@ classdef (InferiorClasses = {?sym}) PO
                 if obj.disp == 1
                     ph_s = PO.ph_num2str(phR);
                     fprintf(1,'phRec: %2s\n',ph_s);
-                end
-                
-        end % SigAmp
+                end                
+        end % SigAmp1
 
-        %% [a0_V,rho_V] = SigAmp2(obj,sp_cell,phR)
-        function [a0_V,rho_V] = SigAmp2(obj,sp_cell,phR)
+        %% [a0_V,rho_V] = SigAmp(obj,sp_cell,phR)
+        function [a0_V,rho_V] = SigAmp(obj,sp_cell,phR)
             % a0_V = SigAmp2(obj,sp_cell,phR)
             % Calculation of initial signal amplitudes (t=0) in the equation
             % s(t) = 2*i*(rho[-b](t) + rho[-a](t) + rho[b-](t) + rho[a-](t))*exp(-i*phrec)
@@ -1429,7 +1443,6 @@ classdef (InferiorClasses = {?sym}) PO
             % a0_V = SigAmp(rho,{'I*' 'S'},0)
             % a0_V = SigAmp(rho,{1 2},0)
 
-            tic;
             spin_label_cell = obj.spin_label;
             sp_cell_tmp = cell(1,0);
             ii_int = 0;
@@ -1454,75 +1467,45 @@ classdef (InferiorClasses = {?sym}) PO
                     ii_int = ii_int + 1;
                     sp_cell_tmp{1,ii_int} = sp;% Char
                 end
-            end 
-            et1 = toc;         
+            end
 
-            tic;
             for ii = 1:length(sp_cell_tmp)
                 sp_tmp = sp_cell_tmp{ii};
                 sp_m = [sp_tmp 'm'];% sp_m : 'Im', 'Sm', ...
 
-                ObsPO = PO(size(obj.axis,2),{sp_m},{sym(1)},spin_label_cell);% 170 ms
+                ObsPO = PO(size(obj.axis,2),{sp_m},{sym(1)},spin_label_cell);
                 if ii == 1
                     obsPO_M = ObsPO.M;% Create obsPO_M
                 else
                     obsPO_M = obsPO_M + ObsPO.M;
                 end
             end
-            et2 = toc;
 
-            tic;
             obsPO_V = reshape(obsPO_M,1,numel(obsPO_M));
             id_tmp = obsPO_V ~= sym(0);
             obsPO_V = obsPO_V(id_tmp);
-            et3 = toc;
 
-            tic;
             objM_V = reshape(obj.M,1,numel(obj.M));
             objM_V = objM_V(id_tmp);
-            et4 = toc;
 
-            tic;
             a0_V = objM_V.*obsPO_V;
             % This should be Hadamard product
             % rho.M.*(Im.M + Sm.M + ...) extracts only (-1)-quantum coherence components in rho, 
             % i.e., (Im.M + Sm.M + ...) works as a mask.
-            et5 = toc;
 
-            tic;
             a0_V = 2*1i*PO.rec_coef(phR)*a0_V;
-            et6 = toc;
 
-            tic;
             rho = obj.coherence;
-            et7 = toc;
 
-            tic;
             rho_V = reshape(rho,1,numel(rho));
             rho_V = rho_V(id_tmp);
-            et8 = toc;
 
-            tic;
             if obj.disp == 1
                 ph_s = PO.ph_num2str(phR);
                 fprintf(1,'phRec: %2s\n',ph_s);
             end
-            et9 = toc;
 
-            % et_total = et1 + et2 + et3 + et4 + et5 + et6 + et7 + et8 + et9;
-            % fprintf(1,'et1:%5.1f %% %5.0f ms\n',et1/et_total*100,1000*et1)
-            % fprintf(1,'et2:%5.1f %% %5.0f ms\n',et2/et_total*100,1000*et2)
-            % fprintf(1,'et3:%5.1f %% %5.0f ms\n',et3/et_total*100,1000*et3)
-            % fprintf(1,'et4:%5.1f %% %5.0f ms\n',et4/et_total*100,1000*et4)
-            % fprintf(1,'et5:%5.1f %% %5.0f ms\n',et5/et_total*100,1000*et5)
-            % fprintf(1,'et6:%5.1f %% %5.0f ms\n',et6/et_total*100,1000*et6)
-            % fprintf(1,'et7:%5.1f %% %5.0f ms\n',et7/et_total*100,1000*et7)
-            % fprintf(1,'et8:%5.1f %% %5.0f ms\n',et8/et_total*100,1000*et8)
-            % fprintf(1,'et9:%5.1f %% %5.0f ms\n',et9/et_total*100,1000*et9)
-            % fprintf(1,'et_SigAmp2 : %5.0f ms\n',1000*et_total)
-            % fprintf(1,'\n');
-
-        end % SigAmp2       
+        end % SigAmp
        
        %% pt = axis2pt(obj,axis_tmp)
        function pt = axis2pt(obj,axis_tmp)
@@ -1635,22 +1618,19 @@ classdef (InferiorClasses = {?sym}) PO
                                 case 'z', phase_id = 3;
                                 case 'p', phase_id = 4;
                                 case 'm', phase_id = 5;
-                                case '*', phase_id = [1;2;3;4;5];% Wildcard
+                                case 'a', phase_id = 6;
+                                case 'b', phase_id = 7;
+                                case '*', phase_id = [1:7]';% Wildcard
                                 otherwise, phase_id = 0;
                             end
 
                             if length(phase_id) == 1
                                     axis_tmp(:,id_tmp) = phase_id;
-                            elseif length(phase_id) == 5% Wildcard for phase
+                            elseif length(phase_id) == 7% Wildcard for phase
                                 rate_tmp = size(axis_tmp,1);%
-                                axis_tmp = repmat(axis_tmp,5,1);% Expand the row size of axis_tmp 5 times. 
-                                phase_id_vec = [1*ones(rate_tmp,1);...
-                                                2*ones(rate_tmp,1);...
-                                                3*ones(rate_tmp,1);...
-                                                4*ones(rate_tmp,1);...
-                                                5*ones(rate_tmp,1)];
-                                % phase_id_vec = [1 1 1... 2 2 2... 3 3 3...4 4 4...5 5 5...]'
-                                % repelem can be used.
+                                axis_tmp = repmat(axis_tmp,7,1);% Expand the row size of axis_tmp 5 times.
+                                phase_id_vec = repelem(phase_id, rate_tmp);
+                                % phase_id_vec = [1 1 1... 2 2 2... 3 3 3... ... 7 7 7...]'
                                 axis_tmp(:,id_tmp) = phase_id_vec;                            
                             end
                         end
@@ -1745,8 +1725,42 @@ classdef (InferiorClasses = {?sym}) PO
                     error('The number of spin types for obj1 and obj2 must be same!')
                 end
 
-                if ~strcmp(obj1.basis, obj2.basis)
-                    error('The bases of obj1 and obj2 must be same!')
+                % if ~strcmp(obj1.basis, obj2.basis)
+                %     error('The bases of obj1 and obj2 must be same!')
+                % end
+
+                % xyz + pmz => pmz
+                if (strcmp(obj1.basis,'xyz') && strcmp(obj2.basis,'pmz')) || (strcmp(obj1.basis,'pmz') && strcmp(obj2.basis,'xyz'))
+                    if strcmp(obj1.basis,'xyz')
+                        obj1 = xyz2pmz(obj1);
+                    end
+
+                    if strcmp(obj2.basis,'xyz')
+                        obj2 = xyz2pmz(obj2);
+                    end
+                    branch_id = 1;
+
+                % xyz + pol => pol
+                elseif (strcmp(obj1.basis,'xyz') && strcmp(obj2.basis,'pol')) || (strcmp(obj1.basis,'pol') && strcmp(obj2.basis,'xyz'))
+                    if strcmp(obj1.basis,'xyz')
+                        obj1 = xyz2pol(obj1);
+                    end
+
+                    if strcmp(obj2.basis,'xyz')
+                        obj2 = xyz2pol(obj2);
+                    end
+                    branch_id = 2;
+
+                % pmz + pol => pol
+                elseif (strcmp(obj1.basis,'pmz') && strcmp(obj2.basis,'pol')) || (strcmp(obj1.basis,'pol') && strcmp(obj2.basis,'pmz'))
+                    if strcmp(obj1.basis,'pmz')
+                        obj1 = pmz2pol(obj1);
+                    end
+
+                    if strcmp(obj2.basis,'pmz')
+                        obj2 = pmz2pol(obj2);
+                    end                    
+                    branch_id = 3;
                 end
 
                 obj_base = obj1;
@@ -1768,13 +1782,13 @@ classdef (InferiorClasses = {?sym}) PO
 
         %% obj = minus(obj1, obj2)
         function obj = minus(obj1, obj2)
-            if isa(obj2,'double')||isa(obj2,'sym') ||isa(obj2,'char') % obj1 - a
+            if isa(obj2,'double') || isa(obj2,'sym') || isa(obj2,'char') % obj1 - a
                 obj_base = obj1;
                 axis_tmp = zeros(1,size(obj_base.axis,2));
                 coef_tmp = -sym(obj2);% Difference from plus()
                 bracket_tmp = 0;
 
-            elseif isa(obj1,'double')||isa(obj1,'sym') ||isa(obj1,'char') % a - obj2
+            elseif isa(obj1,'double') || isa(obj1,'sym') || isa(obj1,'char') % a - obj2
                 obj_base = obj2;
                 obj_base.coef = -1*obj_base.coef;% Difference from plus()
                 axis_tmp = zeros(1,size(obj_base.axis,2));
@@ -1786,8 +1800,42 @@ classdef (InferiorClasses = {?sym}) PO
                     error('The number of spin types for obj1 and obj2 must be same!')
                 end
 
-                if ~strcmp(obj1.basis, obj2.basis)
-                    error('The bases of obj1 and obj2 must be same!')
+                % if ~strcmp(obj1.basis, obj2.basis)
+                %     error('The bases of obj1 and obj2 must be same!')
+                % end
+
+                % xyz + pmz => pmz
+                if (strcmp(obj1.basis,'xyz') && strcmp(obj2.basis,'pmz')) || (strcmp(obj1.basis,'pmz') && strcmp(obj2.basis,'xyz'))
+                    if strcmp(obj1.basis,'xyz')
+                        obj1 = xyz2pmz(obj1);
+                    end
+
+                    if strcmp(obj2.basis,'xyz')
+                        obj2 = xyz2pmz(obj2);
+                    end
+                    branch_id = 1;
+
+                % xyz - pol => pol
+                elseif (strcmp(obj1.basis,'xyz') && strcmp(obj2.basis,'pol')) || (strcmp(obj1.basis,'pol') && strcmp(obj2.basis,'xyz'))
+                    if strcmp(obj1.basis,'xyz')
+                        obj1 = xyz2pol(obj1);
+                    end
+
+                    if strcmp(obj2.basis,'xyz')
+                        obj2 = xyz2pol(obj2);
+                    end
+                    branch_id = 2;
+
+                % pmz - pol => pol
+                elseif (strcmp(obj1.basis,'pmz') && strcmp(obj2.basis,'pol')) || (strcmp(obj1.basis,'pol') && strcmp(obj2.basis,'pmz'))
+                    if strcmp(obj1.basis,'pmz')
+                        obj1 = pmz2pol(obj1);
+                    end
+
+                    if strcmp(obj2.basis,'pmz')
+                        obj2 = pmz2pol(obj2);
+                    end                    
+                    branch_id = 3;
                 end
                 obj_base = obj1;
                 axis_tmp = obj2.axis;
@@ -1825,65 +1873,58 @@ classdef (InferiorClasses = {?sym}) PO
                     error('The number of spin types for obj1 and obj2 must be same!')
                 end
 
-                % xyz vs. pmz: hE and Iz are shared
-                if ~strcmp(obj1.basis,'pol') && ~strcmp(obj2.basis,'pol')% Excluding pol (6, 7) => xyz (0,1,2,3) and pmz (0,3,4,5)
-
-                    if ~strcmp(obj1.basis, obj2.basis) % Bases are not matching
-                        if ~isempty(find(ismember(obj1.axis,[1 2 4 5]),1)) &&...
-                        ~isempty(find(ismember(obj2.axis,[1 2 4 5]),1))
-                            error('Error1: The bases of obj1 and obj2 must be same!')
-                            % ~isempty(find(ismember(obj.axis,[1 2 4 5]),1)) returns 1 if obj.axis includes 1,2,4 or 5
-                            % => If both obj1 and obj2 include 1,2,4 or 5, the error appears.
-                            % => If one of them only includes 0 or 3 and the other includes 1,2,4, or 5, no error appears.
-                        end
-                    end
-    
+                % xyz * xyz
+                if strcmp(obj1.basis,'xyz') && strcmp(obj2.basis,'xyz')
                     basis_org = 'xyz';
-                    % Conversion from pmz to xyz
-                    if strcmp(obj1.basis, 'pmz') 
+                    branch_id = 1;
+
+                % xyz * pmz
+                elseif (strcmp(obj1.basis,'xyz') && strcmp(obj2.basis,'pmz')) || (strcmp(obj1.basis,'pmz') && strcmp(obj2.basis,'xyz'))
+                    if strcmp(obj1.basis,'pmz')
                         obj1 = pmz2xyz(obj1);
-                        basis_org = 'pmz';
                     end
 
-                    if strcmp(obj2.basis, 'pmz') 
+                    if strcmp(obj2.basis,'pmz')
                         obj2 = pmz2xyz(obj2);
-                        basis_org = 'pmz';
                     end
-                    
+                    basis_org = 'pmz';
+                    branch_id = 2;
 
-                % pmz vs. pol: Ip and Im are shared
-                elseif ~strcmp(obj1.basis,'xyz') && ~strcmp(obj2.basis,'xyz')% Excluding xyz (1,2) => pol (4,5,6,7) and pmz (0,3,4,5)
- 
-                     if ~strcmp(obj1.basis, obj2.basis) % Bases are not matching
-                         if ~isempty(find(ismember(obj1.axis,[3 6 7]),1)) &&...% Ia, Ip include 0 if spin_no > 1
-                         ~isempty(find(ismember(obj2.axis,[3 6 7]),1))
-                            error('Error2: The bases of obj1 and obj2 must be same!')
-                            % ~isempty(find(ismember(obj.axis,[3 6 7]),1)) returns 1 if obj.axis includes 3(Iz),6(Ia) or 7(Ib)
-                            % => If both obj1 and obj2 include 3,6,or 7, the error appears.
-                            % => If one of them include only 0, 3, 4, 5 (E, Iz, Ip, Im) and the other includes 1,2,6, or 7, no error appears.
-                         end
-                     end
- 
-                     basis_org = 'pmz';
-                     % Conversion from pmz to xyz
-                     if strcmp(obj1.basis, 'pol') 
+                % xyz * pol
+                elseif (strcmp(obj1.basis,'xyz') && strcmp(obj2.basis,'pol')) || (strcmp(obj1.basis,'pol') && strcmp(obj2.basis,'xyz'))
+                    if strcmp(obj1.basis,'pol')
                         obj1 = pol2xyz(obj1);
-                        basis_org = 'pol';
-                     elseif strcmp(obj1.basis, 'pmz')
-                        obj1 = pmz2xyz(obj1); 
-                     end
- 
-                     if strcmp(obj2.basis, 'pol') 
+                    end
+
+                    if strcmp(obj2.basis,'pol')
                         obj2 = pol2xyz(obj2);
-                        basis_org = 'pol';
-                     elseif strcmp(obj2.basis, 'pmz')
+                    end
+                    basis_org = 'pol';
+                    branch_id = 3;
+
+                % pmz * pmz
+                elseif (strcmp(obj1.basis,'pmz') && strcmp(obj2.basis,'pmz'))
+                    obj1 = pmz2xyz(obj1);
+                    obj2 = pmz2xyz(obj2);
+                    basis_org = 'pmz';
+                    branch_id = 4;
+
+                % pmz * pol
+                elseif (strcmp(obj1.basis,'pmz') && strcmp(obj2.basis,'pol')) || (strcmp(obj1.basis,'pol') && strcmp(obj2.basis,'pmz'))
+                    if strcmp(obj1.basis,'pol')
+                        obj1 = pol2xyz(obj1);
+                    elseif strcmp(obj1.basis,'pmz')
+                        obj1 = pmz2xyz(obj1);
+                    end
+
+                    if strcmp(obj2.basis,'pol')
+                        obj2 = pol2xyz(obj2);
+                    elseif strcmp(obj2.basis,'pmz')
                         obj2 = pmz2xyz(obj2);
-                     end
-
-                else
-                       error('Error3: The bases of obj1 and obj2 must be same!')
+                    end
+                    basis_org = 'pol';
+                    branch_id = 5;
                 end
-
 
                 % Adjustment of size
                 obj_base = obj1;
@@ -2086,7 +2127,7 @@ classdef (InferiorClasses = {?sym}) PO
         %% M_out = axis2M(axis_v, sqn)
         function M_out = axis2M(axis_v, sqn)
             % M_out = axis2M(axis_v, sqn)
-            % axis_v is a value for PO.axis, i.e., 0, 1, 2, 3
+            % axis_v is a value for PO.axis, i.e., 0, 1, 2, 3, 4, 5, 6 and 7.
             % sqn is spin quantum number (Symbolic)
             % Currently, only sqn = sym(1/2) works.
             % M_out is 1/2*Pauli matrix (Symbolic)
@@ -2136,7 +2177,7 @@ classdef (InferiorClasses = {?sym}) PO
             % % a a a = 1 1 1
             % % a a b = 1 1 0
             % % a b a = 1 0 1
-            % % a b b = 1 0 0s
+            % % a b b = 1 0 0
             % % b a a = 0 1 1
             % % b a b = 0 1 0
             % % b b a = 0 0 1
@@ -2145,32 +2186,28 @@ classdef (InferiorClasses = {?sym}) PO
             rho_cell = cell(n_s,n_s);
             % rho(c,r) = <c|rho|r>
             % Since the spin state should be read from right to left,
-            % rho(c,r) correspond to |c> => |r>
+            % rho(c,r) correspond to |r> => |c>
             % Spin Dynamics, p. 470.
-    
+
             for ii = 1:n_s% row
                 for jj = 1:n_s% column
-                    r_vec = bin_mat(ii,:);%|r>
-                    c_vec = bin_mat(jj,:);%|c>
-                    rho_vec = r_vec - c_vec;% To know |c> => |r>  
+                    r_vec = bin_mat(jj,:);%|r>
+                    c_vec = bin_mat(ii,:);%|c>
+                    rho_vec = c_vec - r_vec;% To know |r> => |c>  
+                    % rho_vec take -1, 0, 1.
+                    % -1: m and 1:p
+                    % 0: no change from |c> to |r>  
                     
-                    % p_id = find(rho_vec == 1);% p
-                    % m_id = find(rho_vec == -1);% m
-                    % a_id = find(c_vec == 1);% a
-
-                    rho_tmp = char(double('b')*ones(1,n));
-                    rho_tmp(c_vec == 1) = 'a';% 'abaa..' style of c_vec
-                    rho_tmp(rho_vec == 1) = 'p';%
-                    rho_tmp(rho_vec == -1) = 'm';%
-
-                    % rho_tmp(a_id) = 'a';% 'abaa..' style of c_vec
-                    % rho_tmp(p_id) = 'p';%
-                    % rho_tmp(m_id) = 'm';%
+                    rho_tmp = char(double('b')*ones(1,n));% 'bbbb...'
+                    rho_tmp(r_vec == 1) = 'a';            % 'abaa...' correspond to r_vec
+                    rho_tmp(rho_vec == 1) = 'p';          % 'pbaa...'
+                    rho_tmp(rho_vec == -1) = 'm';         % 'pbam...'
 
                 rho_cell{ii,jj} = rho_tmp;
                 end
             end
             rho = sym(rho_cell);
+
         end
         % rho = rho_box(n)
 
@@ -2203,7 +2240,7 @@ classdef (InferiorClasses = {?sym}) PO
             assignin('base','hE',obj);
 
             if nargin == 1
-                symcoef_switch = 'off';
+                symcoef_switch = 'on';
             end
 
             switch symcoef_switch

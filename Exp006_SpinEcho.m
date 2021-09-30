@@ -31,7 +31,7 @@ for ii = phid
        % rho = rho.pulse(1,ph2,pi+d);% 180+d-pulse, where d indicates the miscalibration of 180-pulse
     rho = rho.cs(1,oI*t);% Chemical shift evolution
 
-    [a0_V,rho_V] = rho.SigAmp('I',phR);% Detection
+    [a0_V,rho_V] = rho.SigAmp({'I'},phR);% Detection
     a0_M = cat(1,a0_M,a0_V);
     rho_M = cat(1,rho_M,rho_V);
 end

@@ -21,7 +21,7 @@ for ii = phid
     rho.dispPOtxt();% Display Initial state
     rho = rho.pulse(1,ph1,pi/2);% 90-pulse
 
-    [a0_V,rho_V] = rho.SigAmp('I',phR);% Detection
+    [a0_V,rho_V] = rho.SigAmp({'I'},phR);% Detection
     a0_M = cat(1,a0_M,a0_V);
     rho_M = cat(1,rho_M,rho_V);
 end

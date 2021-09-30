@@ -1,6 +1,7 @@
-% clear
+clear
 close all
-% Guntert, P.
+% Guntert, P. et al., J. Magn. Reson. Ser. A, 101, 103-105, 1993.
+% Guntert, P. Int. J. Quant. Chem., 106, 344-350, 2006.
 
 phid = 1:6;
 ph1tab = sym([0:5]*pi/3);% I 90
@@ -9,7 +10,7 @@ phRtab = [0 2];% Receiver
 rho_ini = PO(3,{'I1z'},{sym(1)},{'I1' 'I2' 'I3'});
 rho_ini.disp = 1;
 
-syms o1 t1 J12 J13
+PO.symcoef({'I1' 'I2' 'I3'})
 
 a0_M = [];
 rho_M = [];
@@ -28,7 +29,7 @@ for ii = phid
     rho = rho.simpulse({'I*'},{0},{1/2*pi});
 
     dispPO(rho);
-    [a0_V, rho_V] = rho.SigAmp2({'I*'},phR); % Detection
+    [a0_V, rho_V] = rho.SigAmp({'I*'},phR); % Detection
 
     % rho.disp = 1;
     % rho = rho.cs('I1',-phR*pi/2);
