@@ -34,8 +34,7 @@
 
 %%
 classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
-% classdef (InferiorClasses = {?sym}) PO 
-% Overloading of some functions of sym class
+% Overloading of some functions of sym class, custum display of properties
 
 % https://jp.mathworks.com/help/matlab/matlab_oop/custom-display-interface.html
 
@@ -53,7 +52,6 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
 
         basis       % String value to distinguish the basis-status in the calculations.
                     % 'xyz', 'pmz' or 'pol'
-                    
     end
 
     %%
@@ -84,52 +82,12 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                     % 1: On, 2: Off
     end
 
-    % Custom Display of properties. Need to learn more.
-    % These methods worked but were slow.
-    % Change classdef line.
+    % Custom Display of properties. 
     methods (Access = protected)
-        % function header = getHeader(obj)
-        %     if ~isscalar(obj)
-        %         header = getHeader@matlab.mixin.CustomDisplay(obj);
-        %     else
-        %         % headerStr = matlab.mixin.CustomDisplay.getClassNameForHeader(obj);
-        %         headerStr = getHeader@matlab.mixin.CustomDisplay(obj);
-        %         M_txt = char(obj.M);
-        %         id_tmp = strfind(M_txt,';');
-        %         id_tmp = [0 id_tmp length(M_txt)];
-        %         s_tmp = sprintf('M:');
-        %         for ii = 1:length(id_tmp)-1
-        %             s_tmp_tmp = M_txt(id_tmp(ii)+1:id_tmp(ii+1));
-        %             s_tmp = sprintf('%s\n%s',s_tmp,s_tmp_tmp);
-        %         end
-        %         header = sprintf('%s\n%s',headerStr,s_tmp);
-        %     end
-        %  end
         function footer = getFooter(obj)
             if ~isscalar(obj)
                 footer = getFooter@matlab.mixin.CustomDisplay(obj);
             else
-                % footer = '';
-                % for ii = 1:2
-                %     if ii == 1
-                %         M_txt = char(obj.M);
-                %     elseif ii == 2
-                %         M_txt = char(obj.coherence);
-                %     end
-                %     id_tmp = strfind(M_txt,';');
-                %     id_tmp = [0 id_tmp length(M_txt)];
-                %     if ii == 1
-                %         footer = sprintf('%sM:',footer);
-                %     else
-                %         footer = sprintf('%s\n\ncoherence:',footer);
-                %     end
-
-                %     for jj = 1:length(id_tmp)-1
-                %         s_tmp = M_txt(id_tmp(jj)+1:id_tmp(jj+1));
-                %         footer = sprintf('%s\n%s',footer,s_tmp);
-                %     end
-                % end
-
                 % https://www.mathworks.com/matlabcentral/answers/6940-save-disp-output-as-a-string-cell-variable
                 footer = '';
                 footer = sprintf('%sM:',footer);
@@ -138,8 +96,6 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 footer = sprintf('%scoherence:',footer);
                 s_tmp = evalc('disp(obj.coherence)');
                 footer = sprintf('%s\n%s',footer,s_tmp);
-
-
             end
          end
 
@@ -147,9 +103,10 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             if ~isscalar(obj)
                 propgrp = getPropertyGroups@matlab.mixin.CustomDisplay(obj);
             else
-                
                 propList = struct('txt', obj.txt);
                 propList.spin_label = obj.spin_label;
+                % use StructName.FieldName = FieldValue 
+                % instead of struct(FieldName, FieldValue,...) to be a scalar struct.
                 propList.basis = obj.basis;
                 propList.disp = obj.disp;
                 propList.axis = obj.axis;
@@ -160,7 +117,6 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
            end
         end
     end
-
 
     %%
     methods
@@ -1422,18 +1378,49 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             % applys pulse field gradient to all spins.
             % G is a strengh of the field and 
             % gamma_cell a cell array including gyromagnetic ratio of the spins.
+            % This method was obitaned from POMA by Gunter (2006).
 
+            syms Z
             obj_tmp = obj;
             spin_label_cell = obj.spin_label;
             id_vec = 1:size(obj.axis,2);
 
             for jj = id_vec
                 sp_tmp = spin_label_cell{jj};
-                q = G*gamma_cell{jj};
+                q = G*Z*gamma_cell{jj};
                 obj_tmp = cs(obj_tmp,sp_tmp,q);
             end
             obj = obj_tmp;
-        end % pfg        
+        end % pfg
+
+        %% obj = dephase(obj)
+        function obj = dephase(obj, coef_cell)
+            % obj = dephase(obj)
+            % delete terms affected by pfg().
+            % if coef_cell is not assigned, terms including Z in coef are deleted.
+            % if coef_cell is assigned, terms including z*coef_cell{1}*coef_cell{2}*...*coef_cell{end}
+            % are deleted.
+            % This method was obitaned from POMA by Gunter (2006).
+
+            coef_tmp = sym('Z');
+            if nargin < 2
+                coef_cell = {1};
+            end
+
+            for ii = 1:length(coef_cell)
+                coef_tmp = coef_tmp*coef_cell{ii};
+            end
+
+            id_out = findcoef(obj,{coef_tmp});
+
+            if length(id_out) == length(obj.coef)
+                obj.coef = sym(zeros(size(obj.coef)));
+                obj = CombPO(obj);                
+            else
+                obj = delPO(obj,id_out);
+            end
+        end
+        % dephase
         
         %% a0_V = SigAmp1(obj,sp,phR)
         function [a0_V,rho_V] = SigAmp1(obj,sp,phR)
@@ -2127,20 +2114,33 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                     obj = xyz2pol(obj);
                 end
             else
-                if isa(obj2,'double')||isa(obj2,'sym') ||isa(obj2,'char') % obj1*a
-                    obj_base = obj1;
-                    coef_tmp = sym(obj2);
+                if numel(obj1) == 1 && numel(obj2) == 1 % obj1*a or a*obj2, a should not be a vector or matrix
+                    if isa(obj2,'double')||isa(obj2,'sym') ||isa(obj2,'char') % obj1*a
+                        obj_base = obj1;
+                        coef_tmp = sym(obj2);
 
-                elseif isa(obj1,'double')||isa(obj1,'sym') ||isa(obj1,'char') % a*obj2
-                    obj_base = obj2;
-                    coef_tmp = sym(obj1);
+                    elseif isa(obj1,'double')||isa(obj1,'sym') ||isa(obj1,'char') % a*obj2
+                        obj_base = obj2;
+                        coef_tmp = sym(obj1);
+                    end
+                    coef_new = obj_base.coef*coef_tmp;
+                    obj_base.coef = coef_new;
+                    obj = CombPO(obj_base);
+                else % obj1*col_v or row_v*obj2
+                    if (isa(obj2,'double')||isa(obj2,'sym')) && iscolumn(obj2) && size(obj2,1) == size(obj1.M,2) % obj1*col_v
+                        obj = obj1.M*obj2;
+
+                    elseif (isa(obj1,'double')||isa(obj1,'sym')) && isrow(obj1) && size(obj1,2) == size(obj2.M,1) % row_v*obj2
+                        obj = obj1*obj2.M;
+
+                    else
+                        error('The sizes of obj.M and the vector should be same!');
+                    end
                 end
-                coef_new = obj_base.coef*coef_tmp;
-                obj_base.coef = coef_new;
-                obj = CombPO(obj_base);
             end
         end
-        % mtimes        
+        % mtimes
+        
 
         %% obj = mrdivide(obj1, obj2)
         function obj = mrdivide(obj1, obj2) %obj1/obj2
@@ -2154,7 +2154,34 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             obj_base.coef = coef_new;
             obj = CombPO(obj_base);
         end
-        % mrdivide        
+        % mrdivide
+        
+        %% obj = mpower(obj1, obj2)
+        function obj = mpower(obj1, obj2)
+            if isa(obj2,'double') && numel(obj2) == 1
+                if mod(obj2,1) == 0
+                    if obj2 == 0
+                        obj1.coef = sym(zeros(size(obj1.coef)));
+                        obj = CombPO(obj1);
+                    elseif obj2 > 0
+                        for ii = 1:obj2
+                            if ii == 1
+                                obj = obj1;
+                            else
+                                obj = obj*obj1;
+                            end
+                        end
+                    else
+                        error('Can''t calculate obj^-n!')
+                    end
+                else
+                    error('n in obj^n should be rounded!')
+                end
+            else
+                error('n in obj^n should be a scalar!')
+            end
+        end
+        % mpower        
     end % methods
     
     methods (Static)
@@ -2429,7 +2456,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             if nargin == 1
                 add_cell = {};
             end
-            symcoef_list = [symcoef_list add_cell];
+            symcoef_list = [symcoef_list add_cell add_cell];
             for ii = 1:length(symcoef_list)
                 varname = symcoef_list{ii};
                 if exist(varname,'var') == 0

@@ -8,9 +8,9 @@ close all
 syms G gH d
 pfg_switch = 1;
 
-rho = PO(1,{'Ip'});% Ip
+% rho = PO(1,{'Ip'});% Ip
 % Try the case from 2p to -2p
-% rho = PO(2,{'I1pI2p'},{sym(1)},{'I1' 'I2'});% I1pI2p
+rho = PO(2,{'I1pI2p'},{sym(1)},{'I1' 'I2'});% I1pI2p
 
 if pfg_switch == 1
     rho = pfg(rho, G, {gH gH});
@@ -22,6 +22,9 @@ if pfg_switch == 1
     rho = pfg(rho, G, {gH gH});
 end
 
+dispPO(rho);
+
+rho = dephase(rho);
 dispPO(rho);
 
 % Result w/ PFG is
