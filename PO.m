@@ -34,10 +34,9 @@
 
 %%
 classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
-% Overloading of some functions of sym class, custum display of properties
+% Overloading some functions of sym class, custum display of properties
 
-% https://jp.mathworks.com/help/matlab/matlab_oop/custom-display-interface.html
-
+    % https://www.mathworks.com/help/matlab/matlab_oop/property-attributes.html
     %%    
     properties (SetAccess = protected) % Read-Only from the Command Window
         axis        % Showing the status of axis direction for each spin.
@@ -48,7 +47,6 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                     % coef should not include the 2^(N-1) coefficient.
 
         spin_label  % Labels for spin1, 2, 3... stored in a cell. 
-                    % Default: {'I' 'S' 'K' 'L' 'M'} defined in the method PO().
 
         basis       % String value to distinguish the basis-status in the calculations.
                     % 'xyz', 'pmz' or 'pol'
@@ -61,6 +59,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
         SimplifySteps = 10
                 % Number of steps used for simplify() in CombPO().
                 % This prorperty can be changed from set_SimplifySteps().
+
     end
 
     %% 
@@ -71,6 +70,10 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
         coherence   % Populations (diagonal) and coherences (off-diagonal) of a density operator
     end
     
+    properties (Constant = true, Hidden = true) % Constant throughout the methods, Not displayed
+        spin_label_cell_default = {'I' 'S' 'K' 'L' 'M'}; % Default labels for spin_label
+    end
+
     %%
     properties (Constant = true) % Constant throughout the methods
         sqn = sym(1/2);% Spin Quantum Number
@@ -81,14 +84,17 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
         disp = 1    % Control the display of the applied method on the monitor.
                     % 1: On, 2: Off
     end
+    
 
-    % Custom Display of properties. 
+    
+    % Custom Display of properties
+    % https://www.mathworks.com/matlabcentral/answers/6940-save-disp-output-as-a-string-cell-variable
+    % https://www.mathworks.com/help/matlab/matlab_oop/custom-display-interface.html 
     methods (Access = protected)
         function footer = getFooter(obj)
             if ~isscalar(obj)
                 footer = getFooter@matlab.mixin.CustomDisplay(obj);
             else
-                % https://www.mathworks.com/matlabcentral/answers/6940-save-disp-output-as-a-string-cell-variable
                 footer = '';
                 footer = sprintf('%sM:',footer);
                 s_tmp = evalc('disp(obj.M)');
@@ -128,7 +134,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 % Examples 
                 % IxSx   => Ns = 2 => Ncoef = 2
                 % IxSxKx => Ns = 3 => Ncoef = 4
-            elseif strcmp(obj.basis, 'pmz') || strcmp(obj.basis, 'pol')% Raising/Lowering  operator basis
+            elseif strcmp(obj.basis, 'pmz') || strcmp(obj.basis, 'pol')% Raising/Lowering  or Polarization operator bases
                 Ncoef_out = sym(ones(size(obj.axis,1),1));% Ncoef = 1
             end
         end % get.Ncoef
@@ -210,7 +216,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                     end
                 end
                 % M_tmp is a double class
-                % Mo is a symbolic class because coef, Ncoef are symbolic.
+                % Mo below is sym class because coef and Ncoef are symbolic.
                 Mo = M_tmp*obj.coef(ii)*obj.Ncoef(ii)*2^length(find(axis_tmp == 0));
                     % Example
                     % 2IxSz in 4-spin system (ISKL) (axis_tmp = [1 3 0 0])
@@ -225,7 +231,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                    M_out = M_out + Mo;  
                 end
             end
-        end % get.M(obj)
+        end % get.M
         
         %% coherence_out = get.coherence(obj)
         function coherence_out = get.coherence(obj)   
@@ -234,6 +240,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             coherence_out = PO.rho_box(spin_no);
             coherence_out(obj.M == 0) = 0;
         end
+        % get.coherence
 
         %% obj = PO(spin_no,sp_cell,coef_cell,spin_label_cell)
         function obj = PO(spin_no,sp_cell,coef_cell,spin_label_cell) 
@@ -274,11 +281,12 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 bracket_out = [];
 
                 if nargin <= 3
-                spin_label_cell = {'I' 'S' 'K' 'L' 'M'}; % Default spin_label
+                    % spin_label_cell = {'I' 'S' 'K' 'L' 'M'}; % Default spin_label
+                    spin_label_cell = PO.spin_label_cell_default;
                 end
 
                 if length(spin_label_cell) < spin_no % Abort spin_label_cell is not large enough.
-                error('the size of spin_label_cell must be same as or bigger than spin_no');
+                    error('the size of spin_label_cell must be same as or bigger than spin_no');
                 end
 
                 spin_label_cell = spin_label_cell(1:spin_no);% Adjust the size of spin_label_cell to spin_no. 
@@ -396,9 +404,9 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
 
             coef_out = simplify(coef_out, 'Steps', obj.SimplifySteps);% Simplify with obj.SimplifySteps steps.
 
-            A_dummy = sym('A_dummy'); % Use "A" as a first charcter so that A_dummy comes before other alphabets.
-            % syms A_dummy % Use "A" as a first charcter so that A_dummy comes before other alphabets.
-                         % High time-cost; This line should be out of the loop. 
+            A_dummy = sym('A_dummy');
+            % Use "A" as a first charcter so that A_dummy comes before other alphabets.
+
             dummy_p_mat = A_dummy*coef_out;
             char_A_dummy = char(A_dummy);
 
@@ -856,15 +864,45 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
         end
         % pol2pmz
 
-        %% obj = UrhoUinv(obj,H,q)
-        function obj = UrhoUinv(obj,H,q)
-            % obj = UrhoUinv(obj,H,q)
+        %% obj = set_basis(obj,basis_in)
+        function obj = set_basis(obj,basis_in)
+            % change the expression of obj using basis_in
+            % set.basis causes infinite loop in the conversion methods.
+            if ~strcmp(obj.basis,basis_in)
+                if strcmp(obj.basis,'xyz') && strcmp(basis_in,'pmz')
+                    obj = xyz2pmz(obj);
+                elseif strcmp(obj.basis,'xyz') && strcmp(basis_in,'pol')
+                    obj = xyz2pol(obj);
+                elseif strcmp(obj.basis,'pmz') && strcmp(basis_in,'xyz')
+                    obj = pmz2xyz(obj);
+                elseif strcmp(obj.basis,'pmz') && strcmp(basis_in,'pol')
+                    obj = pmz2pol(obj);
+                elseif strcmp(obj.basis,'pol') && strcmp(basis_in,'xyz')
+                    obj = pol2xyz(obj);
+                elseif strcmp(obj.basis,'pol') && strcmp(basis_in,'pmz')
+                    obj = pol2pmz(obj);
+                end
+            end
+        end
+
+        %% obj = UrhoUinv_mt(obj,H,q)
+        function obj = UrhoUinv_mt(obj,H,q)
+            % obj = UrhoUinv_mt(obj,H,q)
             % Calculation of the evolution of rho under q*H based on the cyclic
-            % commutations. No matrix calculation is used.
+            % commutations. The master table for the cyclic commutation is used.
             %
-            % obj, H: PO class objects with xyz-basis.
+            % obj: PO class object with any basis. 
+            %   H: PO class object with xyz-basis.
+            %   q: angle in radian (symbolic or double)
+            %
             % The size of H.axis should be [1,n], i.e., only single term.
-            % q: angle in radian (symbolic or double)
+            % The value in H.coef is multiplied to q in the calculation.
+            % Example 1. H = -Iz
+            % Rotation around -Z-axis with angle q is equivalent to rotation around Z-axis with -q
+            % Exmaple 2. H = Iz*Sz 
+            % H.axis = [3 3] and Ncoef = 2 is calculated from H.axis, indicating H.axis corresponds to 2IzSz.
+            % Thus, H can be described as H = 2IzSz*1/2 and H.coef becomes 1/2. 
+            % Keeler, Understanding NMR Spectroscopy, p. 155.
             
             % Master Table of Cyclic Commutation
             % if [A,B] = iC,[B,C] = iA, and [C,A] = iB (i.e. cyclic commutation)
@@ -881,8 +919,30 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             % If C is 0, no actions
             % If C is a negative value, change the sign of PO.coef.
 
-            if strcmp(obj.basis,'pmz') || strcmp(H.basis,'pmz') || strcmp(obj.basis,'pol') || strcmp(H.basis,'pol') 
-                error('The basis of the object should be xyz')
+            % Check class of obj and H
+            if ~isa(obj,'PO') || ~isa(H,'PO')
+                error('Both obj and H should be the PO object!')
+            end
+
+            % H should be xyz basis
+            if ~strcmp(H.basis,'xyz') 
+                error('The basis of H should be xyz!')
+            end
+
+            % H should be a single term
+            if size(H.axis,1) > 1
+                error('H must be a single term!')
+            end
+
+            % H or obj should be a product of up to two operators
+            if sum(H.axis ~= 0) > 2 && sum(obj.axis ~= 0) > 2 
+                error('H or obj must be a product of up to two operators!')
+            end
+
+            basis_org = 'xyz';
+            if ~strcmp(obj.basis,'xyz')
+                basis_org = obj.basis;
+                obj = set_basis(obj,'xyz');
             end
 
             mt = [ 0  3 -2; 
@@ -891,6 +951,12 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
 
             % Conversion of q from double to Symbolic
             q = sym(q);
+            q = q*H.coef;
+            % Example: H.coef = -1/2, q_new = -1/2*q_old, sin(q_new) = sin(-1/2*q_old) = - sin(1/2*q_old)
+            % If the line q = q*H.coef; above is not used, use the line sign_tmp = sign_tmp*sign(H.coef) below.
+            % UrhoUinv_mt uses H.axis for the calculation.
+            % H.axis = [3 3] automatically means 2*Iz*Sz.
+            % Thus, if H = Iz*Sz, internally it is considered as 2*Iz*Sz*1/2
 
             % Calculation of new density operator evolved under a Hamiltonian
             axis_new = [];
@@ -902,7 +968,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             axis_mask_mat = type_mask_mat.*axis_diff_mat;
             axis_mask_vec = sum(axis_mask_mat,2);
 
-            for ii = 1:length(obj.coef)% For each term of rho
+            for ii = 1:length(obj.coef)% For each term of obj
                 rho_axis = obj.axis(ii,:);
                 axis_mask = axis_mask_vec(ii);
 
@@ -950,7 +1016,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                         end
                     end
                     
-                    sign_tmp = sign_tmp*sign(H.coef);% Direction of the rotation by the sign of H
+                    % sign_tmp = sign_tmp*sign(H.coef);% Direction of the rotation by the sign of H
 
                     if ~isempty(find(axis_tmp,1))% if axis_tmp is not [0 0 0]
                         axis_new = cat(1,axis_new,axis_tmp);
@@ -966,8 +1032,62 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             obj.coef = coef_new;
             obj.bracket = zeros(size(obj.coef));
             obj = CombPO(obj);
-        end % UrhoUinv
+
+            if ~strcmp(basis_org,'xyz')
+                obj = set_basis(obj,basis_org);
+            end
+
+        end % UrhoUinv_mt
+
+        %% obj = urhoUinv_M(obj, H, q)
+        function obj = UrhoUinv_M(obj,H,q)
+            % obj = UrhoUinv_M(obj,H,q)
+            % The evolution of rho under q*H by the matrix calculation.
+            % The speed is slower than UrhoUinv_mt()
+
+            % Check class of obj and H
+            if ~isa(obj,'PO') || ~isa(H,'PO')
+                error('Both obj and H should be the PO object!!')
+            end
+
+            q = sym(q);
+            obj_M1 = obj.M;
+            H_M = H.M;
+            
+            obj_M2 = expm(-1i*H_M*q)*obj_M1*expm(1i*H_M*q);
+            if strcmp(obj.basis, 'xyz')
+                obj = PO.M2xyz(obj_M2, obj.spin_label);
+            elseif strcmp(obj.basis, 'pmz')
+                obj = PO.M2pmz(obj_M2, obj.spin_label);
+            elseif strcmp(obj.basis, 'pol')
+                obj = PO.M2pol(obj_M2, obj.spin_label);
+            end 
+        end
+        % urhoUinv_M
         
+        %% obj = UrhoUinv(obj, H, q)
+        function obj = UrhoUinv(obj, H, q)
+            % obj = UrhoUinv(obj, H, q)
+
+            % Check class of obj and H
+            if ~isa(obj,'PO') || ~isa(H,'PO')
+                error('Both obj and H should be the PO object!!')
+            end
+
+            % switch to UrhoUinv_mt() if the conditions are met.
+            if strcmp(H.basis,'xyz') && size(H.axis,1) == 1 && (sum(H.axis ~= 0) < 3 || sum(obj.axis ~= 0) < 3)
+               % 1st: H should be 'xyz' basis.
+               % 2nd: H should be a single term
+               % 3rd: H or obj should be up to two products.
+                obj = UrhoUinv_mt(obj,H,q);
+                % fprintf(1,'UrhoUinv_mt\n');
+            else
+                obj = UrhoUinv_M(obj,H,q);
+                % fprintf(1,'UrhoUinv_M\n');
+            end
+        end
+        % UrhoUinv
+
         %% obj = pulse(obj,sp,ph,q)
         function [obj, id_sp] = pulse(obj,sp,ph,q)
             % obj = pulse(obj,sp,ph,q)
@@ -1022,9 +1142,10 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             H = PO();
             H.axis = axis_tmp;
             H.coef = coef_tmp;
+            H.basis = 'xyz';
             H.bracket = 0;
 
-            obj = UrhoUinv(obj,H,q);
+            obj = UrhoUinv_mt(obj,H,q);
 
             if strcmp(basis_org,'pmz')
                 obj =  xyz2pmz(obj);
@@ -1121,9 +1242,10 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             H = PO();
             H.axis = axis_tmp;% 1:x, 2:y, 3:z, 0: no type assgined
             H.coef = sym(1);% Coefficient for the product operator
+            H.basis = 'xyz';
             H.bracket = 0;% 1: put bracket if coefficient is a sum-form.
 
-            obj = UrhoUinv(obj,H,q);
+            obj = UrhoUinv_mt(obj,H,q);
 
             if strcmp(basis_org,'pmz')
                 obj =  xyz2pmz(obj);% Conversion to pmz
@@ -1212,9 +1334,10 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             H = PO();
             H.axis = axis_tmp;
             H.coef = sym(1);
+            H.basis = 'xyz';
             H.bracket = 0;
 
-            obj = UrhoUinv(obj,H,q);
+            obj = UrhoUinv_mt(obj,H,q);
 
             if strcmp(basis_org,'pmz')
                 obj =  xyz2pmz(obj);% Conversion to pmz
@@ -1369,7 +1492,6 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 end
             end
             obj = obj_tmp;
-
         end % simpulse_phshift
 
         %% obj = pfg(obj,G,gamma_cell)
@@ -1378,6 +1500,8 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             % applys pulse field gradient to all spins.
             % G is a strengh of the field and 
             % gamma_cell a cell array including gyromagnetic ratio of the spins.
+            % Symbolic constant Z is used as a stamp to show terms affected by pfg().
+            % This information is used in dephase().
             % This method was obitaned from POMA by Gunter (2006).
 
             syms Z
@@ -1398,7 +1522,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             % obj = dephase(obj)
             % delete terms affected by pfg().
             % if coef_cell is not assigned, terms including Z in coef are deleted.
-            % if coef_cell is assigned, terms including z*coef_cell{1}*coef_cell{2}*...*coef_cell{end}
+            % if coef_cell is assigned, terms including Z*coef_cell{1}*coef_cell{2}*...*coef_cell{end}
             % are deleted.
             % This method was obitaned from POMA by Gunter (2006).
 
@@ -1421,77 +1545,6 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             end
         end
         % dephase
-        
-        %% a0_V = SigAmp1(obj,sp,phR)
-        function [a0_V,rho_V] = SigAmp1(obj,sp,phR)
-            % a0_V = SigAmp1(obj,sp,phR)
-            % Calculation of initial signal amplitudes (t=0) in the equation
-            % s(t) = 2*i*(rho[-b](t) + rho[-a](t) + rho[b-](t) + rho[a-](t))*exp(-i*phrec)
-            % Spin Dynamics (2nd Ed.), p.379.
-            %
-            % Related topics: Spin Dynamics (2nd Ed.), p.262, p. 287, p. 371, p.379, pp.608-610.
-            %
-            % Example
-            % a0_V = SigAmp(rho,'S','y')
-            % a0_V = SigAmp(rho,'IS',0)
-            % a0_V = SigAmp(rho,[1 2],0)
-
-                spin_label_cell = obj.spin_label;
-
-                if isa(sp,'double')
-                    for ii = 1:length(sp)
-                        sp_tmp = sp(ii); % double                   
-                        sp_tmp = spin_label_cell{sp_tmp};% char 
-                        sp_m = [sp_tmp 'm'];% sp_m = 'ImSm ...'.
-
-                        ObsPO = PO(size(obj.axis,2),{sp_m},{sym(1)},spin_label_cell);
-                        if ii == 1
-                            obsPO_M = ObsPO.M;% Create obsPO_M
-                        else
-                            obsPO_M = obsPO_M + ObsPO.M;
-                        end
-                    end
-                elseif isa(sp,'char')
-                    ii_int = 0;
-                    for ii = 1:length(spin_label_cell)
-                        spin_label_tmp = spin_label_cell{ii};
-                        if contains(sp,spin_label_tmp)
-                            ii_int = ii_int + 1;
-                            sp_tmp = spin_label_tmp;% char 
-                            sp_m = [sp_tmp 'm'];% Im, Sm, ... .
-        
-                            ObsPO = PO(size(obj.axis,2),{sp_m},{sym(1)},spin_label_cell);
-                            if ii_int == 1
-                                obsPO_M = ObsPO.M;% Create obsPO_M
-                            else
-                                obsPO_M = obsPO_M + ObsPO.M;
-                            end
-                        end
-                    end
-                end
-
-                a0_M = obj.M.*obsPO_M;            
-                % This should be Hadamard product
-                % rho.M.*(Im.M + Sm.M + ...) extracts only (-1)-quantum coherence components in rho, 
-                % i.e., (Im.M + Sm.M + ...) works as a mask.
-                
-                obsPO_V = reshape(obsPO_M,1,numel(obsPO_M));
-                id_tmp = obsPO_V ~= sym(0);
-
-                a0_V = reshape(a0_M,1,numel(a0_M));
-                % id_tmp = a0_V ~= sym(0);
-                a0_V = a0_V(id_tmp);
-                a0_V = 2*1i*PO.rec_coef(phR)*a0_V;
-                
-                rho = obj.coherence;
-                rho_V = reshape(rho,1,numel(rho));
-                rho_V = rho_V(id_tmp);
-
-                if obj.disp == 1
-                    ph_s = PO.ph_num2str(phR);
-                    fprintf(1,'phRec: %2s\n',ph_s);
-                end                
-        end % SigAmp1
 
         %% [a0_V,rho_V] = SigAmp(obj,sp_cell,phR)
         function [a0_V,rho_V] = SigAmp(obj,sp_cell,phR)
@@ -1749,11 +1802,6 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
        end
        % dispProp
 
-       function obj = changeProp(obj, PropertyName, para_in)
-            eval(['obj.',PropertyName, '= para_in;']);
-       end
-       % changeProp
-
         %% obj = set_SimplifySteps(ojb,new_v)
         function obj = set_SimplifySteps(obj,new_v)
             % obj = set_SimplifySteps(ojb,new_v)
@@ -1761,6 +1809,15 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             obj.SimplifySteps = new_v;
         end
         % set_SimplifySteps
+
+        %% obj = set_coef(ojb,new_v)
+        function obj = set_coef(obj,new_v)
+            % obj = set_coef(ojb,new_v)
+            % Change the property coef to a new value.
+            obj.coef = new_v;
+            obj = CombPO(obj);
+        end
+        % set_coef
 
         %% obj = plus(obj1, obj2)
         function obj = plus(obj1, obj2)
@@ -2284,7 +2341,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
         end % axis2M
 
         %% rho = rho_box(n)
-        function rho = rho_box(n)
+        function [rho, rho_num_cell] = rho_box(n)
             % Calculation of "box notation" of the density oeprator, rho.
             % a: alpha state
             % b: beta state
@@ -2295,38 +2352,46 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             dec = n_s-1:-1:0;
         
             bin_mat = de2bi(dec,n,'left-msb');
-            % bin_mat = dec2bin(dec,n) - '0';
-            % % a: 1, b: 0
-            % % a a a = 1 1 1
-            % % a a b = 1 1 0
-            % % a b a = 1 0 1
-            % % a b b = 1 0 0
-            % % b a a = 0 1 1
-            % % b a b = 0 1 0
-            % % b b a = 0 0 1
-            % % b b b = 0 0 0
+            % bin_mat = dec2bin(dec,n) - '0';% Alternative expression
+            % Example: 3 spin system
+            % a: 1, b: 0
+            % |r1> = |c1> = a a a = 1 1 1
+            % |r2> = |c2> = a a b = 1 1 0
+            % |r3> = |c3> = a b a = 1 0 1
+            % |r4> = |c4> = a b b = 1 0 0
+            % |r5> = |c5> = b a a = 0 1 1
+            % |r6> = |c6> = b a b = 0 1 0
+            % |r7> = |c7> = b b a = 0 0 1
+            % |r8> = |c8> = b b b = 0 0 0
         
             rho_cell = cell(n_s,n_s);
             % rho(c,r) = <c|rho|r>
             % Since the spin state should be read from right to left,
             % rho(c,r) correspond to |r> => |c>
             % Spin Dynamics, p. 470.
+            rho_num_cell = cell(n_s,n_s);
 
             for ii = 1:n_s% row
                 for jj = 1:n_s% column
                     r_vec = bin_mat(jj,:);%|r>
                     c_vec = bin_mat(ii,:);%|c>
-                    rho_vec = c_vec - r_vec;% To know |r> => |c>  
+                    rho_vec = c_vec - r_vec;% To know |r> => |c>
                     % rho_vec take -1, 0, 1.
                     % -1: m and 1:p
-                    % 0: no change from |c> to |r>  
-                    
+                    % 0: no change from |r> to |c>  
+
                     rho_tmp = char(double('b')*ones(1,n));% 'bbbb...'
                     rho_tmp(r_vec == 1) = 'a';            % 'abaa...' correspond to r_vec
                     rho_tmp(rho_vec == 1) = 'p';          % 'pbaa...'
                     rho_tmp(rho_vec == -1) = 'm';         % 'pbam...'
+                    rho_cell{ii,jj} = rho_tmp;
 
-                rho_cell{ii,jj} = rho_tmp;
+                    rho_num_vec = zeros(size(rho_vec));
+                    rho_num_vec(r_vec == 1) = 6;% a
+                    rho_num_vec(rho_vec == 1) = 4;% p
+                    rho_num_vec(rho_vec == -1) = 5;% m
+                    rho_num_vec(rho_num_vec == 0) = 7;% b
+                    rho_num_cell{ii,jj} = rho_num_vec;
                 end
             end
             rho = sym(rho_cell);
@@ -2428,7 +2493,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                     end
                 end
             end
-
+            
             % gyromagnetic ratio g
             for ii = 1:spin_no
                 sp = spin_label_cell{ii};
@@ -2452,7 +2517,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 end
             end
 
-            symcoef_list = {'a' 'b' 't1' 't' 'q' 'B' 'd' 'G'};
+            symcoef_list = {'a' 'b' 'd' 'f' 'q' 't1' 't' 'w' 'B' 'G'};
             if nargin == 1
                 add_cell = {};
             end
@@ -2465,6 +2530,69 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             end
         end
         % symcoef
-      
+
+        %% obj = M2pol(M_in,spin_label_cell)
+        function obj = M2pol(M_in,spin_label_cell)
+
+            if ~isa(M_in,'double') && ~isa(M_in,'sym')
+                error('M_in should be double or sym !')
+            end
+
+            if size(M_in,1) ~= size(M_in,2)
+                error('M_in should be 2^n x 2^n !')
+            end
+
+            spin_no = log2(size(M_in,1));
+            if mod(spin_no,1) ~= 0
+                error('M_in should be 2^n x 2^n !')
+            end
+
+            if nargin < 2
+                spin_label_cell = PO.spin_label_cell_default; % Default spin_label
+            end
+
+            if length(spin_label_cell) < spin_no % Abort spin_label_cell is not large enough.
+                error('the size of spin_label_cell must be same as or bigger than spin_no');
+            end
+
+            spin_label_cell = spin_label_cell(1:spin_no);% Adjust the size of spin_label_cell to spin_no. 
+
+
+            [~,rho_num_cell] = PO.rho_box(spin_no);
+            M_in = sym(M_in);
+            axis_tmp = cell2mat(rho_num_cell(M_in ~= sym(0)));
+            coef_tmp = M_in(M_in ~= sym(0));
+
+            obj = PO();
+            obj.axis = axis_tmp;
+            obj.coef = coef_tmp;
+            obj.spin_label = spin_label_cell;
+            obj.bracket = zeros(size(coef_tmp));
+            obj.basis = 'pol';
+
+            obj = CombPO(obj);
+        end
+        % M2pol
+
+        %% obj = M2pmz(M_in,spin_label_cell)
+        function obj = M2pmz(M_in,spin_label_cell)
+            if nargin < 2
+                spin_label_cell = PO.spin_label_cell_default; % Default spin_label
+            end
+            obj = PO.M2pol(M_in,spin_label_cell);
+            obj = pol2pmz(obj);
+        end
+        % M2pmz
+
+        %% obj = M2xyz(M_in,spin_label_cell)
+        function obj = M2xyz(M_in,spin_label_cell)
+            if nargin < 2
+                spin_label_cell = PO.spin_label_cell_default; % Default spin_label
+            end
+            obj = PO.M2pol(M_in,spin_label_cell);
+            obj = pol2xyz(obj);
+        end
+        % M2xyz
+
     end % methods (Static)
 end % classdef
