@@ -50,15 +50,23 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
 
         basis       % String value to distinguish the basis-status in the calculations.
                     % 'xyz', 'pmz' or 'pol'
+
+        logs        % Log information of obj. It can be turned off by changing logs_bin to 0.
+
     end
 
     %%
-    properties (Access = protected) % No access from the Command Window
+    properties (Access = protected) 
+        % No access from the Command Window. Each PO object has its own value.
         bracket % Binary value to indicate cases with (a+b) or (a-b) type coefficient (1: yes, 0: no)
 
         SimplifySteps = 10
                 % Number of steps used for simplify() in CombPO().
                 % This prorperty can be changed from set_SimplifySteps().
+
+        % logs_bin = 1;
+                % Control to keep the logs property or not. (1: yes, 0: no)
+                % The logs property calls obj.txt, and this process cause a small delay.
 
     end
 
@@ -70,12 +78,17 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
         coherence   % Populations (diagonal) and coherences (off-diagonal) of a density operator
     end
     
-    properties (Constant = true, Hidden = true) % Constant throughout the methods, Not displayed
+    properties (Constant = true, Hidden = true) 
+        % Constant throughout the methods. All PO objects have same value. Not displayed
         spin_label_cell_default = {'I' 'S' 'K' 'L' 'M'}; % Default labels for spin_label
+        asterisk_bin = 0;
+        % Control to the asterisk '*' between spin operators in the txt property.
+        % 0 :w/o, 1: w/ '*'.
     end
 
     %%
-    properties (Constant = true) % Constant throughout the methods
+    properties (Constant = true) 
+        % Constant throughout the methods. All PO objects have same value.
         sqn = sym(1/2);% Spin Quantum Number
     end
     
@@ -115,6 +128,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 % instead of struct(FieldName, FieldValue,...) to be a scalar struct.
                 propList.basis = obj.basis;
                 propList.disp = obj.disp;
+                propList.logs = obj.logs;
                 propList.axis = obj.axis;
                 propList.coef = obj.coef;
                 propList.Ncoef = obj.Ncoef;
@@ -140,7 +154,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
         end % get.Ncoef
         
         %% txt_out = get.txt(obj)
-        function txt_out = get.txt(obj)
+        function txt_out = get.txt(obj)            
             if isempty(find(obj.coef ~= sym(0),1))% If all coef values are zero.
                 txt_out = '0';
             else
@@ -156,7 +170,11 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                     
                     % Remove '1' from single-type P.O. (N = 1 for 2^(N-1))
                     if ~strcmp(char(Ncoef_tmp),'1')
-                        ptc = strcat(char(Ncoef_tmp),pt);
+                        if obj.asterisk_bin == 0
+                            ptc = strcat(char(Ncoef_tmp),pt);
+                        elseif obj.asterisk_bin == 1
+                            ptc = strcat(char(Ncoef_tmp),'*',pt);% with *
+                        end
                     else
                         ptc = pt;
                     end
@@ -241,6 +259,17 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             coherence_out(obj.M == 0) = 0;
         end
         % get.coherence
+
+
+        %% obj = set.logs(obj,v)
+        function obj = set.logs(obj,v)
+            % obj = set.logs(obj,v)
+            % obj.logs_bin controls the logs property
+            % if obj.logs_bin == 1
+                obj.logs = v;
+            % end
+        end
+        % set.logs
 
         %% obj = PO(spin_no,sp_cell,coef_cell,spin_label_cell)
         function obj = PO(spin_no,sp_cell,coef_cell,spin_label_cell) 
@@ -356,6 +385,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 obj.basis = basis_out;
 
                 obj = CombPO(obj);
+                obj.logs = obj.txt;
             end
         end % PO
         
@@ -452,7 +482,6 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             obj.axis = axis_sort;
             obj.coef = coef_out(id_sort,:);
             obj.bracket = bracket_out(id_sort,:);
-
         end %CombPO
 
         % obj = xyz2pmz(obj)
@@ -545,6 +574,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             obj2.bracket = bracket_out;
             obj2.basis = 'pmz';
             obj = CombPO(obj2);
+            obj.logs = char(obj2.logs,sprintf('%s',obj.txt));
         end
         % xyz2pmz
 
@@ -635,6 +665,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             obj2.bracket = bracket_out;
             obj2.basis = 'xyz';
             obj = CombPO(obj2);
+            obj.logs = char(obj2.logs,sprintf('%s',obj.txt));
         end
         % pmz2xyz
 
@@ -743,6 +774,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             obj2.bracket = bracket_out;
             obj2.basis = 'pol';
             obj = CombPO(obj2);
+            obj.logs = char(obj2.logs,sprintf('%s',obj.txt));
         end
         % xyz2pol
 
@@ -837,6 +869,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             obj2.bracket = bracket_out;
             obj2.basis = 'xyz';
             obj = CombPO(obj2);
+            obj.logs = char(obj2.logs,sprintf('%s',obj.txt));
         end
         % pol2xyz
 
@@ -845,9 +878,10 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             if ~strcmp(obj.basis,'pmz')
                 error('The basis of the object should be pmz')
             end
-
+            s1 = obj.logs;
             obj = pmz2xyz(obj);
             obj = xyz2pol(obj);
+            obj.logs = char(s1,obj.txt);
             % Future version: direct conversin from pmz to pol
         end
         % pmz2pol
@@ -857,9 +891,10 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             if ~strcmp(obj.basis,'pol')
                 error('The basis of the object should be pol')
             end
-
+            s1 = obj.logs;
             obj = pol2xyz(obj);
             obj = xyz2pmz(obj);
+            obj.logs = char(s1,obj.txt);
             % Future version: direct conversin from pmz to pol
         end
         % pol2pmz
@@ -939,11 +974,8 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 error('H or obj must be a product of up to two operators!')
             end
 
-            basis_org = 'xyz';
-            if ~strcmp(obj.basis,'xyz')
-                basis_org = obj.basis;
-                obj = set_basis(obj,'xyz');
-            end
+            basis_org = obj.basis;
+            obj = set_basis(obj,'xyz');
 
             mt = [ 0  3 -2; 
                   -3  0  1; 
@@ -1033,10 +1065,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             obj.bracket = zeros(size(obj.coef));
             obj = CombPO(obj);
 
-            if ~strcmp(basis_org,'xyz')
-                obj = set_basis(obj,basis_org);
-            end
-
+            obj = set_basis(obj,basis_org);
         end % UrhoUinv_mt
 
         %% obj = urhoUinv_M(obj, H, q)
@@ -1053,7 +1082,6 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             q = sym(q);
             obj_M1 = obj.M;
             H_M = H.M;
-            
             obj_M2 = expm(-1i*H_M*q)*obj_M1*expm(1i*H_M*q);
             if strcmp(obj.basis, 'xyz')
                 obj = PO.M2xyz(obj_M2, obj.spin_label);
@@ -1074,6 +1102,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 error('Both obj and H should be the PO object!!')
             end
 
+            s0 = obj.logs;
             % switch to UrhoUinv_mt() if the conditions are met.
             if strcmp(H.basis,'xyz') && size(H.axis,1) == 1 && (sum(H.axis ~= 0) < 3 || sum(obj.axis ~= 0) < 3)
                % 1st: H should be 'xyz' basis.
@@ -1085,6 +1114,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 obj = UrhoUinv_M(obj,H,q);
                 % fprintf(1,'UrhoUinv_M\n');
             end
+            obj.logs = char(s0,obj.txt);
         end
         % UrhoUinv
 
@@ -1098,15 +1128,11 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             % ph: phase of the pulse, character ('x','X','-x' etc.) or number (0,1,2,3)
             %     quadrature phase only.
             % q: flip angle in radian (symbolic or double)
-            
-            basis_org = 'xyz';
-            if strcmp(obj.basis,'pmz')
-                obj =  pmz2xyz(obj);% Conversion to xyz
-                basis_org = 'pmz';
-            elseif strcmp(obj.basis,'pol')
-                obj =  pol2xyz(obj);% Conversion to xyz
-                basis_org = 'pol';
-            end
+
+
+            basis_org = obj.basis;
+            s0 = obj.logs;
+            obj = set_basis(obj,'xyz');
 
             axis_tmp = zeros(1,size(obj.axis,2));
             spin_label_cell = obj.spin_label;            
@@ -1147,11 +1173,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
 
             obj = UrhoUinv_mt(obj,H,q);
 
-            if strcmp(basis_org,'pmz')
-                obj =  xyz2pmz(obj);
-            elseif strcmp(basis_org,'pol')
-                obj =  xyz2pol(obj);
-            end
+            obj = set_basis(obj,basis_org);
 
             if isa(q,'sym') == 1
                 s_out = sprintf('Pulse: %s %s %s',spin_label_cell{id_sp},char(q),ph_tmp);
@@ -1159,9 +1181,12 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 s_out = sprintf('Pulse: %s%4d%s',spin_label_cell{id_sp},round(q/pi*180),ph_tmp);
             end
 
+            s1 = sprintf('%s',s_out);
+            s2 = sprintf('    %s',obj.txt);
+            obj.logs = char(s0,s1,s2); 
             if obj.disp == 1
-                fprintf(1,'%s\n',s_out);
-                fprintf(1,'    %s\n',obj.txt);
+                fprintf(1,'%s\n',s1);
+                fprintf(1,'%s\n',s2);
             end
         end % pulse
         
@@ -1180,30 +1205,14 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             % Exmaple:
             % rho_new = simpulse(rho,{'I' 'S'},{'x' 'y'},{pi/2 pi/2})
             
-            obj_tmp = obj;
             spin_label_cell = obj.spin_label;
-            for ii = 1:max(size(sp_cell))
-                sp = sp_cell{ii};
-                ph = ph_cell{ii};
-                q = q_cell{ii};
-             
-                if contains(sp,'*')
-                    if length(sp) == 1 % '*' applys pulse() to all spins.
-                        id_vec = 1:max(size(spin_label_cell));
-                    elseif length(sp) == 2 % 'I*' applys pulse() to I1, I2, ... if spin_label is set {'I1' 'I2' ...}
-                        id_vec = find(contains(spin_label_cell,sp(1)));
-                    end
-
-                    for jj = id_vec
-                        sp_tmp = spin_label_cell{jj};
-                        obj_tmp = pulse(obj_tmp,sp_tmp,ph,q);%Run pulse each
-                    end                   
-                else % sp doesn't include '*'
-                    obj_tmp = pulse(obj_tmp,sp,ph,q);%Run pulse each
-                end
+            [id_vec, ii_vec] = PO.sp2id(sp_cell,spin_label_cell);
+            for ii = 1:length(id_vec)
+                sp = id_vec(ii); % double
+                ph = ph_cell{ii_vec(ii)};
+                q  =  q_cell{ii_vec(ii)};
+                obj = pulse(obj,sp,ph,q);
             end
-            obj = obj_tmp;
-
         end % simpulse
         
         %% obj = cs(obj,sp,q)
@@ -1215,14 +1224,9 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             % the order number of spin (1 for 'I', 2 for 'S' etc.).
             % q: flip angle (symbolic or double)
 
-            basis_org = 'xyz';
-            if strcmp(obj.basis,'pmz')
-                obj =  pmz2xyz(obj);% Conversion to xyz
-                basis_org = 'pmz';
-            elseif strcmp(obj.basis,'pol')
-                obj =  pol2xyz(obj);% Conversion to xyz
-                basis_org = 'pol';
-            end
+            basis_org = obj.basis;
+            s0 = obj.logs;
+            obj = set_basis(obj,'xyz');
 
             axis_tmp = zeros(1,size(obj.axis,2));
             spin_label_cell = obj.spin_label;
@@ -1247,9 +1251,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
 
             obj = UrhoUinv_mt(obj,H,q);
 
-            if strcmp(basis_org,'pmz')
-                obj =  xyz2pmz(obj);% Conversion to pmz
-            end
+            obj = set_basis(obj,basis_org);
 
             if isa(q,'sym') == 1
                 s_out = sprintf('CS: %s %s',spin_label_cell{id_sp},char(q));
@@ -1257,9 +1259,12 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 s_out = sprintf('CS: %s%4d',spin_label_cell{id_sp},round(q/pi*180));
             end
 
+            s1 = sprintf('%s',s_out);
+            s2 = sprintf('    %s',obj.txt);
+            obj.logs = char(s0,s1,s2); 
             if obj.disp == 1
-                fprintf(1,'%s\n',s_out);
-                fprintf(1,'    %s\n',obj.txt);
+                fprintf(1,'%s\n',s1);
+                fprintf(1,'%s\n',s2);
             end
 
         end % cs
@@ -1268,42 +1273,23 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
         function obj = simcs(obj,sp_cell,q_cell)
             % obj = simcs(obj,sp_cell,q_cell)
 
-            obj_tmp = obj;
             spin_label_cell = obj.spin_label;
-            for ii = 1:max(size(sp_cell))
-                sp = sp_cell{ii};
-                q = q_cell{ii};
-             
-                if contains(sp,'*')% Including 'I*' or '*'
-                    if length(sp) == 1 % '*'
-                        id_vec = 1:max(size(spin_label_cell));
-                    elseif length(sp) == 2 % 'I*' 
-                        id_vec = find(contains(spin_label_cell,sp(1)));
-                    end
+            [id_vec, ii_vec] = PO.sp2id(sp_cell,spin_label_cell);
+            for ii = 1:length(id_vec)
+                sp = id_vec(ii);% double
+                q  =  q_cell{ii_vec(ii)};
+                obj = cs(obj,sp,q);
+            end
 
-                    for jj = id_vec
-                        sp_tmp = spin_label_cell{jj};
-                        obj_tmp = cs(obj_tmp,sp_tmp,q);
-                     end
-                else % sp doesn't include '*'
-                    obj_tmp = cs(obj_tmp,sp,q);
-                end
-             end
-             obj = obj_tmp;
         end % simcs        
         
         %% obj = jc(obj,sp,q)
         function [obj, id_sp] = jc(obj,sp,q)
             % obj = jc(obj,sp,q)
 
-            basis_org = 'xyz';
-            if strcmp(obj.basis,'pmz')
-                obj =  pmz2xyz(obj);% Conversion to xyz
-                basis_org = 'pmz';
-            elseif strcmp(obj.basis,'pol')
-                obj =  pol2xyz(obj);% Conversion to xyz
-                basis_org = 'pol';
-            end
+            basis_org = obj.basis;
+            s0 = obj.logs;
+            obj =  set_basis(obj,'xyz');% Conversion to xyz
 
             axis_tmp = zeros(1,size(obj.axis,2));
             spin_label_cell = obj.spin_label;
@@ -1339,9 +1325,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
 
             obj = UrhoUinv_mt(obj,H,q);
 
-            if strcmp(basis_org,'pmz')
-                obj =  xyz2pmz(obj);% Conversion to pmz
-            end
+            obj =  set_basis(obj,basis_org);% Conversion to basis_org
 
             if isa(q,'sym') == 1
                 s_out = sprintf('JC: %s %s',sp_tmp,char(q));
@@ -1349,11 +1333,13 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 s_out = sprintf('JC: %s%4d',sp_tmp,round(q/pi*180));
             end
 
+            s1 = sprintf('%s',s_out);
+            s2 = sprintf('    %s',obj.txt);
+            obj.logs = char(s0,s1,s2); 
             if obj.disp == 1
-                fprintf(1,'%s\n',s_out);
-                fprintf(1,'    %s\n',obj.txt);
+                fprintf(1,'%s\n',s1);
+                fprintf(1,'%s\n',s2);
             end
-
         end % jc 
        
         %% obj = simjc(obj,sp_cell,q_cell)
@@ -1390,10 +1376,18 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 for ii = 1:size(obj.axis,1)
                     axis_tmp = obj.axis(ii,:);
                     pt = axis2pt(obj,axis_tmp);
-                    if strcmp(char(obj.Ncoef(ii)),'1')
-                        fprintf(1,'%4d%5s%-10s %s\n',ii,'',pt,char(obj.coef(ii)));
-                    else
-                        fprintf(1,'%4d%5s%-10s %s\n',ii,char(obj.Ncoef(ii)),pt,char(obj.coef(ii)));                   
+                    if obj.asterisk_bin == 0
+                        if strcmp(char(obj.Ncoef(ii)),'1')
+                            fprintf(1,'%4d%5s%-10s %s\n',ii,'',pt,char(obj.coef(ii)));
+                        else
+                            fprintf(1,'%4d%5s%-10s %s\n',ii,char(obj.Ncoef(ii)),pt,char(obj.coef(ii)));                   
+                        end
+                    elseif obj.asterisk_bin == 1
+                        if strcmp(char(obj.Ncoef(ii)),'1')
+                            fprintf(1,'%4d%6s%-20s %s\n',ii,'',pt,char(obj.coef(ii)));
+                        else
+                            fprintf(1,'%4d%5s%s%-20s %s\n',ii,char(obj.Ncoef(ii)),'*',pt,char(obj.coef(ii)));                   
+                        end
                     end
                 end
                 fprintf(1,'\n');
@@ -1438,6 +1432,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
 
             disp_org = obj.disp;
             obj.disp = 0;
+            s0 = obj.logs;
             obj = cs(obj,sp,-ph);        % 1. Rotation -ph along Z axis
             obj = pulse(obj,sp,'x',q);   % 2. Rotation   q along X axis
             [obj, id_sp] = cs(obj,sp,ph);% 3. Rotation  ph along Z axis.
@@ -1458,40 +1453,28 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 end
             end
 
+            s1 = sprintf('%s\n',s_out);
+            s2 = sprintf('    %s\n',obj.txt);
+            obj.logs = char(s0,s1,s2); 
             if obj.disp == 1
-                fprintf(1,'%s\n',s_out);
-                fprintf(1,'    %s\n',obj.txt);
+                fprintf(1,'%s',s1);
+                fprintf(1,'%s',s2);
             end
-
         end % pulse_phshift
         
         %% obj = simpulse_phshift(obj,sp_cell,ph_cell,q_cell)
         function obj = simpulse_phshift(obj,sp_cell,ph_cell,q_cell)
             % obj = simpulse_phshift(obj,sp_cell,ph_cell,q_cell)
 
-            obj_tmp = obj;
             spin_label_cell = obj.spin_label;
-            for ii = 1:max(size(sp_cell))
-                sp = sp_cell{ii};
-                ph = ph_cell{ii};
-                q = q_cell{ii};
-             
-                if contains(sp,'*')% Including 'I*' or '*'
-                    if length(sp) == 1 % '*'
-                        id_vec = 1:max(size(spin_label_cell));
-                    elseif length(sp) == 2 % 'I*' 
-                        id_vec = find(contains(spin_label_cell,sp(1)));
-                    end
-
-                    for jj = id_vec
-                        sp_tmp = spin_label_cell{jj};
-                        obj_tmp = pulse_phshift(obj_tmp,sp_tmp,ph,q);%Run pulse each
-                     end                   
-                else % sp doesn't include '*'
-                    obj_tmp = pulse_phshift(obj_tmp,sp,ph,q);%Run pulse each
-                end
+            [id_vec, ii_vec] = PO.sp2id(sp_cell,spin_label_cell);
+            for ii = 1:length(id_vec)
+                sp = id_vec(ii);% double
+                ph = ph_cell{ii_vec(ii)};
+                q  =  q_cell{ii_vec(ii)};
+                obj = pulse_phshift(obj,sp,ph,q);
             end
-            obj = obj_tmp;
+
         end % simpulse_phshift
 
         %% obj = pfg(obj,G,gamma_cell)
@@ -1526,6 +1509,10 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             % are deleted.
             % This method was obitaned from POMA by Gunter (2006).
 
+            basis_org = obj.basis;
+            s0 = obj.logs;
+            obj = set_basis(obj,'pol');
+
             coef_tmp = sym('Z');
             if nargin < 2
                 coef_cell = {1};
@@ -1543,8 +1530,94 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             else
                 obj = delPO(obj,id_out);
             end
+
+            obj = set_basis(obj,basis_org);
+
+            s_out = sprintf('Dephasing of terms including %s',char(coef_tmp));
+
+            s1 = sprintf('%s',s_out);
+            s2 = sprintf('    %s',obj.txt);
+            obj.logs = char(s0,s1,s2); 
+            if obj.disp == 1
+                fprintf(1,'%s\n',s1);
+                fprintf(1,'%s\n',s2);
+            end
         end
         % dephase
+
+        %% obj = receiver(obj,phR)
+        function obj = receiver(obj,phR)
+            % obj = receiver(obj,phR)
+            % Rotation around Z-axis by -phR,
+            % where phR is a receiver phase.
+            % This method was obitaned from POMA by Gunter (2006).
+
+            q = PO.ph2q(phR);
+            disp_org = obj.disp;
+            obj.disp = 0;
+            s0 = obj.logs;
+            sp_cell = obj.spin_label;
+            spin_no = length(sp_cell);
+
+            % q_cell = mat2cell(-q*ones(1,spin_no),[1],ones(1,spin_no));% Rotation of -q around Z-axis
+            q_cell = PO.v2cell(-q,sp_cell);% Rotation of -q around Z-axis
+            obj = simcs(obj,sp_cell,q_cell);
+            obj.disp = disp_org;
+
+            s_out = sprintf('Receiver with %s',PO.ph_num2str(phR));
+            s1 = sprintf('%s',s_out);
+            s2 = sprintf('    %s',obj.txt);
+            obj.logs = char(s0,s1,s2); 
+            if obj.disp == 1
+                fprintf(1,'%s\n',s1);
+                fprintf(1,'%s\n',s2);
+            end
+        end
+
+        %% obj = observable(obj,sp_cell)
+        function obj = observable(obj,sp_cell)
+
+            spin_label_cell = obj.spin_label;
+            if nargin < 2
+                sp_cell = spin_label_cell;
+            end
+
+            s0 = obj.logs;
+            if ~strcmp(obj.basis,'xyz')
+                obj = set_basis(obj,'xyz');
+            end
+
+            % Selection of observable terms
+            axis_in = obj.axis;
+            id_in = find(sum(axis_in == 1|axis_in == 2,2) == 1);% terms with only one x or one y
+            obj = selPO(obj,id_in);
+
+            id_vec = PO.sp2id(sp_cell,spin_label_cell);% target spin types
+
+            id_in = [];
+            for ii = 1:size(obj.axis,1)
+                axis_tmp = obj.axis(ii,:);
+                if sum(axis_tmp(id_vec) == 1|axis_tmp(id_vec) == 2) == 1
+                    id_in = cat(2,id_in,ii);
+                end
+            end
+            obj = selPO(obj,id_in);
+
+            if isa(cell2mat(sp_cell),'double')
+                s_out = sprintf('Selecting Observable of %s',cell2mat(spin_label_cell(cell2mat(sp_cell))));
+            else
+                s_out = sprintf('Selecting Observable of %s',cell2mat(sp_cell));
+            end
+            s1 = sprintf('%s',s_out);
+            s2 = sprintf('    %s',obj.txt);
+            obj.logs = char(s0,s1,s2); 
+            if obj.disp == 1
+                fprintf(1,'%s\n',s1);
+                fprintf(1,'%s\n',s2);
+            end
+
+        end
+        % observable
 
         %% [a0_V,rho_V] = SigAmp(obj,sp_cell,phR)
         function [a0_V,rho_V] = SigAmp(obj,sp_cell,phR)
@@ -1591,7 +1664,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 sp_tmp = sp_cell_tmp{ii};
                 sp_m = [sp_tmp 'm'];% sp_m : 'Im', 'Sm', ...
 
-                ObsPO = PO(size(obj.axis,2),{sp_m},{sym(1)},spin_label_cell);
+                ObsPO = PO(size(obj.axis,2),{sp_m},{1},spin_label_cell);
                 if ii == 1
                     obsPO_M = ObsPO.M;% Create obsPO_M
                 else
@@ -1634,14 +1707,16 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
            % Example:
            % axis_tmp = [1 1], pt = 'IxSx'. Note that pt doesn't include '2' for '2IxSx'.
             pt = '';
-            if isempty(find(axis_tmp, 1))
+            if isempty(find(axis_tmp, 1))% axis_tmp = [0 0 ... 0]
                 pt = 'E';
             else
+                jj_int = 0;% with *
                 for jj = 1:length(axis_tmp)
                     axis_v = axis_tmp(jj);
                     st = obj.spin_label{jj};
 
                     if axis_v ~=0
+                        jj_int = jj_int + 1;% with *
                         if axis_v == 1
                             at = 'x';  
                         elseif axis_v == 2
@@ -1656,9 +1731,18 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                             at = 'a';
                         elseif axis_v == 7
                             at = 'b';
-                        end                
-                        pt = strcat(pt,st,at);
-                    end            
+                        end
+
+                        if obj.asterisk_bin == 1
+                            if jj_int == 1                
+                                pt = strcat(pt,st,at);
+                            else
+                                pt = strcat(pt,'*',st,at);% with *
+                            end
+                        elseif obj.asterisk_bin == 0
+                            pt = strcat(pt,st,at);
+                        end
+                    end
                 end
             end
        end % axis2pt
@@ -1676,10 +1760,12 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
         % id_in is a vector including id numbers for the terms to be deleted.
         % These number can be obtained by dispPO(obj).
 
+            s0 = obj.logs;
             id_in = obj.findterm(id_in);
             obj.axis(id_in,:) = [];
             obj.coef(id_in,:) = [];
             obj = CombPO(obj);
+            obj.logs = char(s0,obj.txt);
         end % delPO
 
        %% obj = selPO(obj,id_in)
@@ -1695,12 +1781,12 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
         % Select particular terms in obj.
         % id_in is a vector including id numbers for the terms to be seleted.
         % These number can be obtained by dispPO(obj).
-
+            s0 = obj.logs;
             id_in = obj.findterm(id_in);
             obj.axis = obj.axis(id_in,:);
             obj.coef = obj.coef(id_in,:);
-
             obj = CombPO(obj);
+            obj.logs = char(s0,obj.txt);
         end % selPO
 
         %% id_out = findterm(obj,id_in)
@@ -1802,22 +1888,39 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
        end
        % dispProp
 
-        %% obj = set_SimplifySteps(ojb,new_v)
+        %% obj = set_SimplifySteps(obj,new_v)
         function obj = set_SimplifySteps(obj,new_v)
-            % obj = set_SimplifySteps(ojb,new_v)
+            % obj = set_SimplifySteps(obj,new_v)
             % Change the property SimplifySteps to a new value.
             obj.SimplifySteps = new_v;
         end
         % set_SimplifySteps
 
-        %% obj = set_coef(ojb,new_v)
+        %% obj = set_coef(obj,new_v)
         function obj = set_coef(obj,new_v)
-            % obj = set_coef(ojb,new_v)
+            % obj = set_coef(obj,new_v)
             % Change the property coef to a new value.
             obj.coef = new_v;
             obj = CombPO(obj);
         end
         % set_coef
+
+        % %% obj = set_logs_bin(obj,new_v)
+        % function obj = set_logs_bin(obj,new_v)
+        %     % obj = set_logs_bin(obj,new_v)
+        %     % Change the property logs_bin to a new value.
+        %     obj.logs_bin = new_v;
+        % end
+        % % set_logs_bin
+
+        % %% obj = set_asterisk_bin(obj,new_v)
+        % function obj = set_asterisk_bin(obj,new_v)
+        %     % obj = set_asterisk_bin(obj,new_v)
+        %     % Change the property asterisk_bin to a new value.
+        %     % asterisk_bin should be 0 or 1.
+        %     obj.asterisk_bin = new_v;
+        % end
+        % % set_asterisk_bin
 
         %% obj = plus(obj1, obj2)
         function obj = plus(obj1, obj2)
@@ -1848,36 +1951,15 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
 
                 % xyz + pmz => pmz
                 if (strcmp(obj1.basis,'xyz') && strcmp(obj2.basis,'pmz')) || (strcmp(obj1.basis,'pmz') && strcmp(obj2.basis,'xyz'))
-                    if strcmp(obj1.basis,'xyz')
-                        obj1 = xyz2pmz(obj1);
-                    end
-
-                    if strcmp(obj2.basis,'xyz')
-                        obj2 = xyz2pmz(obj2);
-                    end
-                    branch_id = 1;
+                    obj1 = set_basis(obj1,'pmz');
+                    obj2 = set_basis(obj2,'pmz');
 
                 % xyz + pol => pol
-                elseif (strcmp(obj1.basis,'xyz') && strcmp(obj2.basis,'pol')) || (strcmp(obj1.basis,'pol') && strcmp(obj2.basis,'xyz'))
-                    if strcmp(obj1.basis,'xyz')
-                        obj1 = xyz2pol(obj1);
-                    end
-
-                    if strcmp(obj2.basis,'xyz')
-                        obj2 = xyz2pol(obj2);
-                    end
-                    branch_id = 2;
-
                 % pmz + pol => pol
-                elseif (strcmp(obj1.basis,'pmz') && strcmp(obj2.basis,'pol')) || (strcmp(obj1.basis,'pol') && strcmp(obj2.basis,'pmz'))
-                    if strcmp(obj1.basis,'pmz')
-                        obj1 = pmz2pol(obj1);
-                    end
-
-                    if strcmp(obj2.basis,'pmz')
-                        obj2 = pmz2pol(obj2);
-                    end                    
-                    branch_id = 3;
+                elseif (strcmp(obj1.basis,'xyz') && strcmp(obj2.basis,'pol')) || (strcmp(obj1.basis,'pol') && strcmp(obj2.basis,'xyz')) || ...
+                       (strcmp(obj1.basis,'pmz') && strcmp(obj2.basis,'pol')) || (strcmp(obj1.basis,'pol') && strcmp(obj2.basis,'pmz'))
+                    obj1 = set_basis(obj1,'pol');
+                    obj2 = set_basis(obj2,'pol');
                 end
 
                 obj_base = obj1;
@@ -1894,6 +1976,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             obj_base.coef = coef_new;
             obj_base.bracket = bracket_new;
             obj = CombPO(obj_base);
+            obj.logs = obj.txt;
         end
         % plus
 
@@ -1927,36 +2010,16 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
 
                 % xyz + pmz => pmz
                 if (strcmp(obj1.basis,'xyz') && strcmp(obj2.basis,'pmz')) || (strcmp(obj1.basis,'pmz') && strcmp(obj2.basis,'xyz'))
-                    if strcmp(obj1.basis,'xyz')
-                        obj1 = xyz2pmz(obj1);
-                    end
-
-                    if strcmp(obj2.basis,'xyz')
-                        obj2 = xyz2pmz(obj2);
-                    end
-                    branch_id = 1;
+                    obj1 = set_basis(obj1,'pmz');
+                    obj2 = set_basis(obj2,'pmz');
 
                 % xyz - pol => pol
-                elseif (strcmp(obj1.basis,'xyz') && strcmp(obj2.basis,'pol')) || (strcmp(obj1.basis,'pol') && strcmp(obj2.basis,'xyz'))
-                    if strcmp(obj1.basis,'xyz')
-                        obj1 = xyz2pol(obj1);
-                    end
-
-                    if strcmp(obj2.basis,'xyz')
-                        obj2 = xyz2pol(obj2);
-                    end
-                    branch_id = 2;
-
                 % pmz - pol => pol
-                elseif (strcmp(obj1.basis,'pmz') && strcmp(obj2.basis,'pol')) || (strcmp(obj1.basis,'pol') && strcmp(obj2.basis,'pmz'))
-                    if strcmp(obj1.basis,'pmz')
-                        obj1 = pmz2pol(obj1);
-                    end
+                elseif (strcmp(obj1.basis,'xyz') && strcmp(obj2.basis,'pol')) || (strcmp(obj1.basis,'pol') && strcmp(obj2.basis,'xyz')) || ...
+                       (strcmp(obj1.basis,'pmz') && strcmp(obj2.basis,'pol')) || (strcmp(obj1.basis,'pol') && strcmp(obj2.basis,'pmz'))
+                    obj1 = set_basis(obj1,'pol');
+                    obj2 = set_basis(obj2,'pol');
 
-                    if strcmp(obj2.basis,'pmz')
-                        obj2 = pmz2pol(obj2);
-                    end                    
-                    branch_id = 3;
                 end
                 obj_base = obj1;
                 axis_tmp = obj2.axis;
@@ -1972,12 +2035,14 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             obj_base.coef = coef_new;
             obj_base.bracket = bracket_new;
             obj = CombPO(obj_base);
+            obj.logs = obj.txt;
         end
         % minus
 
         %% obj = uminus(obj) 
         function obj = uminus(obj)
             obj.coef = -1*obj.coef;
+            obj.logs = obj.txt;
         end
         % uminus
 
@@ -1999,61 +2064,33 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                     basis_org = 'xyz';
                     branch_id = 1;
 
-                % xyz * pmz
+                % xyz * pmz or pmz * xyz 
                 elseif (strcmp(obj1.basis,'xyz') && strcmp(obj2.basis,'pmz')) || (strcmp(obj1.basis,'pmz') && strcmp(obj2.basis,'xyz'))
-                    if strcmp(obj1.basis,'pmz')
-                        obj1 = pmz2xyz(obj1);
-                    end
-
-                    if strcmp(obj2.basis,'pmz')
-                        obj2 = pmz2xyz(obj2);
-                    end
                     basis_org = 'pmz';
                     branch_id = 2;
 
-                % xyz * pol
+                % xyz * pol or pol * xyz 
                 elseif (strcmp(obj1.basis,'xyz') && strcmp(obj2.basis,'pol')) || (strcmp(obj1.basis,'pol') && strcmp(obj2.basis,'xyz'))
-                    if strcmp(obj1.basis,'pol')
-                        obj1 = pol2xyz(obj1);
-                    end
-
-                    if strcmp(obj2.basis,'pol')
-                        obj2 = pol2xyz(obj2);
-                    end
                     basis_org = 'pol';
                     branch_id = 3;
 
                 % pmz * pmz
                 elseif (strcmp(obj1.basis,'pmz') && strcmp(obj2.basis,'pmz'))
-                    obj1 = pmz2xyz(obj1);
-                    obj2 = pmz2xyz(obj2);
                     basis_org = 'pmz';
                     branch_id = 4;
 
-                % pmz * pol
+                % pmz * pol or pol * pmz
                 elseif (strcmp(obj1.basis,'pmz') && strcmp(obj2.basis,'pol')) || (strcmp(obj1.basis,'pol') && strcmp(obj2.basis,'pmz'))
-                    if strcmp(obj1.basis,'pol')
-                        obj1 = pol2xyz(obj1);
-                    elseif strcmp(obj1.basis,'pmz')
-                        obj1 = pmz2xyz(obj1);
-                    end
-
-                    if strcmp(obj2.basis,'pol')
-                        obj2 = pol2xyz(obj2);
-                    elseif strcmp(obj2.basis,'pmz')
-                        obj2 = pmz2xyz(obj2);
-                    end
                     basis_org = 'pol';
                     branch_id = 5;
 
                 % pol * pol
                 elseif (strcmp(obj1.basis,'pol') && strcmp(obj2.basis,'pol'))
-                    obj1 = pol2xyz(obj1);
-                    obj2 = pol2xyz(obj2);
                     basis_org = 'pol';
                     branch_id = 6;
-
                 end
+                obj1 = set_basis(obj1,'xyz');
+                obj2 = set_basis(obj2,'xyz');
 
                 % Adjustment of the row size
                 obj_base = obj1;
@@ -2164,12 +2201,8 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
 
                 obj = CombPO(obj_base);
 
-                % Conversion from xyz to pmz
-                if strcmp(basis_org, 'pmz')
-                    obj = xyz2pmz(obj);
-                elseif strcmp(basis_org, 'pol')
-                    obj = xyz2pol(obj);
-                end
+                obj = set_basis(obj,basis_org);
+
             else
                 if numel(obj1) == 1 && numel(obj2) == 1 % obj1*a or a*obj2, a should not be a vector or matrix
                     if isa(obj2,'double')||isa(obj2,'sym') ||isa(obj2,'char') % obj1*a
@@ -2195,6 +2228,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                     end
                 end
             end
+            obj.logs = obj.txt;
         end
         % mtimes
         
@@ -2210,6 +2244,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             coef_new = obj_base.coef/coef_tmp;
             obj_base.coef = coef_new;
             obj = CombPO(obj_base);
+            obj.logs = obj.txt;
         end
         % mrdivide
         
@@ -2237,10 +2272,12 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             else
                 error('n in obj^n should be a scalar!')
             end
+            obj.logs = obj.txt;
         end
         % mpower        
     end % methods
     
+    %% Static
     methods (Static)
         %% phout = phmod(phx,ii)
         function phout = phmod(phx,ii)
@@ -2268,19 +2305,19 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             % ph_s = ph_num2str(ph_n)
             % Conversion from quadrature phase number (ph_n = 0,1,2,3)
             % to phase characters (ph_s = x,y,-x,-y)
-                if isa(ph_n,'char')
-                    ph_s = ph_n;
-                else
-                    if ph_n == 0
-                        ph_s = 'x';
-                    elseif ph_n == 1
-                        ph_s = 'y';
-                    elseif ph_n == 2
-                        ph_s = '-x';
-                    elseif ph_n == 3
-                        ph_s = '-y';
-                    end
+            if isa(ph_n,'char')
+                ph_s = ph_n;
+            else
+                if ph_n == 0
+                    ph_s = 'x';
+                elseif ph_n == 1
+                    ph_s = 'y';
+                elseif ph_n == 2
+                    ph_s = '-x';
+                elseif ph_n == 3
+                    ph_s = '-y';
                 end
+            end
         end % ph_num2st
        
         %% coef = rec_coef(ph)
@@ -2293,17 +2330,80 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             % coef(pi)     = -1
             % coef(pi*3/2) =  1i
             % Spin Dynamics (2nd Ed.), p.287.
-                if strcmp(ph,'x')==1||strcmp(ph,'X')==1||(isa(ph,'double')&&ph == 0)
-                    coef = 1;
-                elseif strcmp(ph,'y')==1||strcmp(ph,'Y')==1||(isa(ph,'double')&&ph == 1)
-                    coef = -1i;
-                elseif strcmp(ph,'-x')==1||strcmp(ph,'-X')==1||(isa(ph,'double')&&ph == 2)
-                    coef = -1;
-                elseif strcmp(ph,'-y')==1||strcmp(ph,'-Y')==1||(isa(ph,'double')&&ph == 3)
-                    coef = 1i;
-                end 
-        end % rec_coef              
+            if strcmp(ph,'x')==1||strcmp(ph,'X')==1||(isa(ph,'double')&&ph == 0)
+                coef = 1;
+            elseif strcmp(ph,'y')==1||strcmp(ph,'Y')==1||(isa(ph,'double')&&ph == 1)
+                coef = -1i;
+            elseif strcmp(ph,'-x')==1||strcmp(ph,'-X')==1||(isa(ph,'double')&&ph == 2)
+                coef = -1;
+            elseif strcmp(ph,'-y')==1||strcmp(ph,'-Y')==1||(isa(ph,'double')&&ph == 3)
+                coef = 1i;
+            end 
+        end % rec_coef
+
+        %% q = ph2q(ph)
+        function q = ph2q(ph)
+            % Conversion from quadrature phase to radian.
+            %  x,  X, 0 => 0
+            %  y,  Y, 1 => pi/2
+            % -x, -X, 2 => pi
+            % -y, -Y, 3 => pi*3/2
+
+            if strcmp(ph,'x')==1||strcmp(ph,'X')==1||(isa(ph,'double')&&ph == 0)
+                q = 0;
+            elseif strcmp(ph,'y')==1||strcmp(ph,'Y')==1||(isa(ph,'double')&&ph == 1)
+                q = pi/2;
+            elseif strcmp(ph,'-x')==1||strcmp(ph,'-X')==1||(isa(ph,'double')&&ph == 2)
+                q = pi;
+            elseif strcmp(ph,'-y')==1||strcmp(ph,'-Y')==1||(isa(ph,'double')&&ph == 3)
+                q = 3/2*pi;
+            end 
+        end % ph2q              
        
+        %% id_vec = sp2id(sp_cell,spin_label_cell)
+        function [id_vec, ii_vec] = sp2id(sp_cell,spin_label_cell)
+            % [id_vec, ii_vec] = sp2id(sp_cell,spin_label_cell)
+            % Example:
+            % spin_label_cell = {'I1' 'I2' 'I3' 'S4' 'S5'}
+            %
+            % sp_cell = {'I*' 'S*'}
+            % id_vec = [1 2 3 4 5];% id of spin_label_cell
+            % ii_vec = [1 1 1 2 2];% id of sp_cell
+            %
+            % sp_cell = {'*'}
+            % id_vec = [1 2 3 4 5];% id of spin_label_cell
+            % ii_vec = [1 1 1 1 1];% id of sp_cell
+            %
+            % sp_cell = {'I1' 'I2' 'S*'}
+            % id_vec = [1 2 4 5];% id of spin_label_cell
+            % ii_vec = [1 2 3 3];% id of sp_cell
+
+            id_vec = [];
+            ii_vec = [];
+            for ii = 1:max(size(sp_cell))% for each element of sp_cell
+                sp = sp_cell{ii};
+                if isa(sp,'double')
+                    id_vec_tmp = sp;
+
+                elseif isa(sp,'char')
+                    if contains(sp,'*')% Wildcard 'I*' or '*'
+                        if length(sp) == 1 % '*'
+                            id_vec_tmp = 1:size(spin_label_cell,2);
+                        elseif length(sp) == 2 % 'I*' 
+                            id_vec_tmp = find(contains(spin_label_cell,sp(1)));% 1st character of sp
+                        end
+                    else % sp doesn't include '*'
+                        id_vec_tmp = find(contains(spin_label_cell,sp));
+                    end
+                end
+                id_vec = cat(2,id_vec,id_vec_tmp);
+                ii_vec_tmp = ii*ones(size(id_vec_tmp));
+                ii_vec = cat(2,ii_vec,ii_vec_tmp);
+            end
+            [id_vec,id_tmp] = unique(id_vec);% Remove if duplicates exist
+            ii_vec = ii_vec(id_tmp);
+        end % sp2id
+
         %% M_out = axis2M(axis_v, sqn)
         function M_out = axis2M(axis_v, sqn)
             % M_out = axis2M(axis_v, sqn)
@@ -2314,7 +2414,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             % (axis_v = 0 for s0 (E), 1 for s1(sx), 2 for s2(sy) and 3 for s3(sz))
 
             if nargin == 1
-                sqn = sym(1/2);
+                sqn = PO.sqn;
             end
             
             if sqn == sym(1/2)
@@ -2327,16 +2427,15 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 elseif axis_v == 3% z
                     M_tmp = 1/2*[1 0;0 -1];
                 elseif axis_v == 4% p
-                        M_tmp = [0 1;0 0];
+                    M_tmp = [0 1;0 0];
                 elseif axis_v == 5% m
-                        M_tmp = [0 0;1 0];
+                    M_tmp = [0 0;1 0];
                 elseif axis_v == 6% a
-                        M_tmp = [1 0;0 0];
+                    M_tmp = [1 0;0 0];
                 elseif axis_v == 7% b
-                        M_tmp = [0 0;0 1];
+                    M_tmp = [0 0;0 1];
                 end
             end
-            %   M_out = sym(M_tmp);
             M_out = M_tmp; % Output as double. It is converted to sym in get.M().
         end % axis2M
 
@@ -2395,14 +2494,14 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 end
             end
             rho = sym(rho_cell);
-
         end
         % rho = rho_box(n)
 
         %% create(spin_label_cell)
-        function create(spin_label_cell, symcoef_switch)
+        function create(spin_label_cell,add_cell,symcoef_switch)
             %% Spin Operators
             spin_no = length(spin_label_cell);
+            assign_method = 'caller';
             for ii = 1:spin_no
                 for jj = 1:7
                     if jj == 1
@@ -2421,48 +2520,58 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                         sp = [spin_label_cell{ii} 'b'];
                     end
                     obj = PO(spin_no,{sp},{1},spin_label_cell);
-                    assignin('base',sp,obj);
+                    assignin(assign_method,sp,obj);
                 end
             end
             obj = PO(spin_no,{'1'},{1},spin_label_cell);
-            assignin('base','hE',obj);
+            assignin(assign_method,'hE',obj);
 
             if nargin == 1
                 symcoef_switch = 'on';
+                add_cell = {};
+            elseif nargin == 2
+                symcoef_switch = 'on';
             end
-
+            
             switch symcoef_switch
                 case {'y','on'}
-                    PO.symcoef(spin_label_cell)
+                    PO.symcoef(spin_label_cell,add_cell,'base')
+                    % symcoefs stored in the workspace
+                    % if PO.create is called in a function, 
+                    % PO.symcoef should be also called in that function.
             end
         end
         % create
 
         %% symcoef(spin_label_cell)
-        function symcoef(spin_label_cell,add_cell)
+        function symcoef(spin_label_cell,add_cell,assign_method)
             % Create pre-set Symbolic Coefficients
 
             spin_no = length(spin_label_cell);
+            if nargin < 3
+                assign_method = 'caller';
+            end
+
             % frequency o
             for ii = 1:spin_no
                 sp = spin_label_cell{ii};
 
                 varname = ['o' sp];
-                assignin('base',varname,sym(varname));
+                assignin(assign_method,varname,sym(varname));
 
                 varname = ['o' sp(1)];
                 if exist(varname,'var') == 0
-                    assignin('base',varname,sym(varname));
+                    assignin(assign_method,varname,sym(varname));
                 end
 
                 varname = ['o' sp(end)];
                 if exist(varname,'var') == 0
-                    assignin('base',varname,sym(varname));
+                    assignin(assign_method,varname,sym(varname));
                 end
 
                 varname = ['o' num2str(ii)];
                 if exist(varname,'var') == 0
-                    assignin('base',varname,sym(varname));
+                    assignin(assign_method,varname,sym(varname));
                 end
             end
 
@@ -2474,21 +2583,21 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                         sp_jj = spin_label_cell{jj};
 
                         varname = ['J' sp_ii sp_jj];
-                        assignin('base',varname,sym(varname));
+                        assignin(assign_method,varname,sym(varname));
 
                         varname = ['J' sp_ii(1) sp_jj(1)];
                         if exist(varname,'var') == 0
-                            assignin('base',varname,sym(varname));
+                            assignin(assign_method,varname,sym(varname));
                         end
 
                         varname = ['J' sp_ii(end) sp_jj(end)];
                         if exist(varname,'var') == 0
-                            assignin('base',varname,sym(varname));
+                            assignin(assign_method,varname,sym(varname));
                         end
 
                         varname = ['J' num2str(ii) num2str(jj)];
                         if exist(varname,'var') == 0
-                            assignin('base',varname,sym(varname));
+                            assignin(assign_method,varname,sym(varname));
                         end
                     end
                 end
@@ -2499,25 +2608,25 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 sp = spin_label_cell{ii};
 
                 varname = ['g' sp];
-                assignin('base',varname,sym(varname));
+                assignin(assign_method,varname,sym(varname));
 
                 varname = ['g' sp(1)];
                 if exist(varname,'var') == 0
-                    assignin('base',varname,sym(varname));
+                    assignin(assign_method,varname,sym(varname));
                 end
 
                 varname = ['g' sp(end)];
                 if exist(varname,'var') == 0
-                    assignin('base',varname,sym(varname));
+                    assignin(assign_method,varname,sym(varname));
                 end
 
                 varname = ['g' num2str(ii)];
                 if exist(varname,'var') == 0
-                    assignin('base',varname,sym(varname));
+                    assignin(assign_method,varname,sym(varname));
                 end
             end
 
-            symcoef_list = {'a' 'b' 'd' 'f' 'q' 't1' 't' 'w' 'B' 'G'};
+            symcoef_list = {'a' 'b' 'd' 'f' 'q' 't1' 't2' 't3' 't4' 't' 'w' 'B' 'J' 'G'};
             if nargin == 1
                 add_cell = {};
             end
@@ -2525,11 +2634,203 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             for ii = 1:length(symcoef_list)
                 varname = symcoef_list{ii};
                 if exist(varname,'var') == 0
-                    assignin('base',varname,sym(varname));
+                    assignin(assign_method,varname,sym(varname));
                 end
             end
         end
         % symcoef
+
+        %% v_cell = v2cell(v,ref_cell)
+        function v_cell = v2cell(v,ref_cell)
+            % v_cell = v2cell(v,ref_cell)
+            % crealt a cell array {v v v ... v} with the same size of ref_cell.
+            v_cell = num2cell(v*ones(size(ref_cell)));
+        end
+        % v2cell
+
+        %% line_mat = read_ascii(fname)
+        function line_mat = read_ascii(fname)
+            % line_mat = read_ascii(fname)
+            % Read a ascii file fname and output char array.
+
+            fid=fopen(fname);
+            line_mat='';
+                while 1
+                    tline = fgetl(fid);
+                    if ~isstr(tline), break, end
+                        if length(tline) == 0
+                            tline=' ';
+                        end
+                        line_mat=strvcat(line_mat,tline);
+                end
+            fclose(fid);
+        end
+        % read_ascii
+
+        %% [para_lines, ps_lines, rho_ini_line] = load_PS(fname)
+        function [para_lines, ps_lines, rho_ini_line] = load_PS(fname)
+            % [para_lines, ps_lines, rho_ini_line] = load_PS(fname)
+            % Load information of pulse seuequence from fname.
+            % para_lines: lines for parameters
+            % ps_lines: lines for pulse sequence
+            % rho_ini_line: line for rho_ini
+            
+            mlines = PO.read_ascii(fname);
+            para_bin = 0;
+            ps_bin = 0;
+            rho_ini_bin = 0;
+            para_lines = '';
+            ps_lines = '';
+            for ii = 1:size(mlines,1)
+                mline = mlines(ii,:);
+                if contains(mline,'% Para begin %')
+                    para_bin = 1;
+                    continue;
+                elseif contains(mline,'% Para end %')
+                    para_bin = 0;
+                elseif contains(mline,'% PS begin %')
+                    ps_bin = 1;
+                    continue;
+                elseif contains(mline,'% PS end %')
+                    ps_bin = 0;
+                elseif contains(mline,'rho_ini') && strfind(mline,'rho_ini') == 1
+                    rho_ini_bin = 1;
+                end
+
+                if para_bin == 1
+                    if rho_ini_bin == 0
+                        para_lines = strvcat(para_lines,mline);
+                    elseif rho_ini_bin == 1
+                        rho_ini_line = mline;
+                        rho_ini_bin = 0;
+                    end
+                elseif ps_bin == 1
+                    ps_lines = strvcat(ps_lines,mline);
+                end
+            end
+        end
+        % load_PS
+
+        %% run_PS(fname)
+        function [rho_cell, rho_detect_cell, rho_total, rho_obs, a0_M, rho_M] = run_PS(fname)
+            % [rho_cell, rho_total, rho_obs, a0_M, rho_M] = run_PS(fname)
+            % Run a pluse sequence defined by the input file, fname.
+            % The input file is an ascii file.
+
+            %% Load lines for parameters and pulse sequence
+            [para_lines, ps_lines, rho_ini_line] = PO.load_PS(fname);
+
+            % Input parameters
+            % spin_label_cell : Cell array for the spin labels. If it is not assigned, {'I' 'S' 'K' 'L' 'M'} is used.
+            % rho_ini         : PO object of the initial state. It should be described by the PO objects.
+            % obs_cell        : Cell array defining the observed spins. The wildcard character '*' can be used.
+            %                   If it is not assigned, {'*'} is used, meaning all spins are observed.
+            % ph_cell         : Cell array defining phase tables. ph_cell{n} is a row vector corresponding to phn in the pulse sequence.
+            % phRtab          : Row vector defining receiver phase. Currently, only quadrature phase is accepted.
+            % phid            : Row vector defining phase cycle. For full phase cycling, it is not necessary to assign this parameter.
+            %                   If it is necessary to run particular sets of phases, assign this parameter. 
+            %                   For example, if you like to check 2nd and 4th steps of the phase cycling, phid = [2 4];
+            % coef_cell        : Cell array to create additional symbolic coefficients required for the pulse sequence. 
+            %                   If it is not assigned, {} is used.
+            % disp_bin        : Binary value to control the display of the pulse sequence on the Command Window (1:ON, 0:OFF).
+            %                   If it is not assigned, 1 is used.
+
+            %% Create parameters
+            for ii = 1:size(para_lines,1)
+                eval(para_lines(ii,:))
+            end
+
+            if exist('phid','var') == 0
+                ph_length = 0;
+                for ii = 1:length(ph_cell)
+                    ph_length = max(ph_length,length(ph_cell{ii}));
+                end
+                h_length = max(ph_length,length(phRtab));
+                phid = 1:ph_length;
+            end
+
+            if exist('coef_cell','var') == 0
+                coef_cell = {};
+            end
+            
+            if exist('spin_label_cell','var') == 0
+                spin_label_cell = PO.spin_label_cell_default;
+            end
+
+            if exist('disp_bin','var') == 0
+                disp_bin = 1;
+            end
+
+            if exist('obs_cell','var') == 0
+                obs_cell = {'*'};
+            end
+
+            %% Create spin operators and sym constants
+            PO.create(spin_label_cell,coef_cell,'off');
+            PO.symcoef(spin_label_cell,coef_cell);% Need to call here, not in PO.create.
+
+            %% Create rho_ini
+            eval(rho_ini_line);
+
+            %% Control of display
+            rho_ini.disp = disp_bin;
+
+            a0_M = [];
+            rho_M = [];
+            rho_total = 0;
+            rho_cell = cell(1,length(phid));
+            rho_detect_cell = cell(1,length(phid));
+            int_ii = 0;
+            for ii = phid
+                int_ii = int_ii + 1;
+                fprintf(1,'\nii: %2d\n',ii);
+
+                % Create phases
+                if exist('ph_cell','var') == 1
+                    for jj = 1:length(ph_cell)
+                        eval(['ph',num2str(jj),'= PO.phmod(ph_cell{jj},ii);'])
+                    end
+                end
+                phR = PO.phmod(phRtab,ii);
+
+                rho = rho_ini;
+                if rho_ini.disp == 1
+                    rho.dispPOtxt();
+                end
+
+                % Run pulse sequence
+                for jj = 1:size(ps_lines,1)
+                    try
+                        eval(ps_lines(jj,:));
+                    catch ME
+                        error_message = sprintf('PS Line %d, %s',jj,ME.message);
+                        error(error_message);
+                    end
+                end
+
+                % Store rho
+                rho_cell{int_ii} = rho;
+
+                % Receiver
+                rho_detect = receiver(rho,phR);
+                rho_detect_cell{int_ii} = rho_detect;
+                rho_total = rho_detect + rho_total;
+
+                if nargout > 3
+                    [a0_V, rho_V] = rho.SigAmp(obs_cell,phR);
+                    if nargout == 4
+                        a0_M = cat(1,a0_M,a0_V);
+                    end
+
+                    if nargout == 5
+                        rho_M = cat(1,rho_M,rho_V)
+                    end
+                end
+            end
+            % Observable
+            rho_obs = observable(rho_total,obs_cell);
+        end
+        % run_PS
 
         %% obj = M2pol(M_in,spin_label_cell)
         function obj = M2pol(M_in,spin_label_cell)
@@ -2571,6 +2872,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             obj.basis = 'pol';
 
             obj = CombPO(obj);
+            obj.logs = obj.txt;
         end
         % M2pol
 
@@ -2581,6 +2883,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             end
             obj = PO.M2pol(M_in,spin_label_cell);
             obj = pol2pmz(obj);
+            obj.logs = obj.txt;
         end
         % M2pmz
 
@@ -2591,6 +2894,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             end
             obj = PO.M2pol(M_in,spin_label_cell);
             obj = pol2xyz(obj);
+            obj.logs = obj.txt;
         end
         % M2xyz
 

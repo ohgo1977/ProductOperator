@@ -1,8 +1,11 @@
+% Exp035_FreeEvolution.m
+
 clear
 close all
+% Comparison of the calculation speeds between UrhoUinv_mt() and UrhoUinv_M()
 
-% spin_label_cell = {'I' 'S'};
-spin_label_cell = {'I' 'S' 'K'};
+% spin_label_cell = {'I' 'S'};% Case of two spins
+spin_label_cell = {'I' 'S' 'K'};% Case of three spins
 PO.create(spin_label_cell);
 
 rho = Ix;
@@ -23,8 +26,7 @@ et2 = toc;
 fprintf(1,'UrhoUinv_M(): %g s\n',et2);
 dispPOtxt(obj2);
 
-% disp(obj1 - obj2)% Check obj1 == obj2
-
+% Rewrite obj2.coef
 coef_new = simplify(rewrite(obj2.coef,'sincos'));
 obj3 = set_coef(obj2,coef_new);
 fprintf(1,'Rewrite coef from UrhoUinv_M()\n')

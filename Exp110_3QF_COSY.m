@@ -1,3 +1,5 @@
+% Exp110_3QF_COSY.m
+
 clear
 close all
 % Guntert, P. et al., J. Magn. Reson. Ser. A, 101, 103-105, 1993.
@@ -7,13 +9,15 @@ phid = 1:6;
 ph1tab = sym([0:5]*pi/3);% I 90
 phRtab = [0 2];% Receiver
 
-rho_ini = PO(3,{'I1z'},{sym(1)},{'I1' 'I2' 'I3'});
+% Initial State
+rho_ini = PO(3,{'I1z'},{1},{'I1' 'I2' 'I3'});
 rho_ini.disp = 1;
-
 PO.symcoef({'I1' 'I2' 'I3'})
 
 a0_M = [];
 rho_M = [];
+rho_total = 0;
+
 for ii = phid
     fprintf(1,'\nii: %2d\n',ii);            
     ph1 = PO.phmod(ph1tab,ii);
@@ -28,13 +32,11 @@ for ii = phid
     rho = rho.simpulse_phshift({'I*'},{ph1},{1/2*pi});
     rho = rho.simpulse({'I*'},{0},{1/2*pi});
 
-    dispPO(rho);
+    rho_detect = receiver(rho,phR);
+    rho_total = rho_detect + rho_total;
+
     [a0_V, rho_V] = rho.SigAmp({'I*'},phR); % Detection
-
-    % rho.disp = 1;
-    % rho = rho.cs('I1',-phR*pi/2);
-    % [a0_V, rho_V] = rho.SigAmp2({'I1'},0); % Detection
-
     a0_M = cat(1,a0_M,a0_V);
     rho_M = cat(1,rho_M,rho_V);
 end
+rho_final = observable(rho_total,{'I*'});

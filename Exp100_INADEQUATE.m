@@ -1,3 +1,5 @@
+% Exp100_INADEQUATE.m
+
 clear
 close all
 % Levitt, M. H., Spin Dynamics(2nd Ed.), p.433.
