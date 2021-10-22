@@ -1,8 +1,9 @@
 % Exp010_OnePulse.m
+% Examples of input parameters for PO.pulse().
 
 clear
 close all
-% Examples of input parameters for PO.pulse().
+
 
 rho = PO(1,{'Iz'});% Initial State
 rho.dispPOtxt();

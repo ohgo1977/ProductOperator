@@ -1,5 +1,4 @@
 % Exp110_3QF_COSY_PS.m
-
 % Guntert, P. et al., J. Magn. Reson. Ser. A, 101, 103-105, 1993.
 % Guntert, P. Int. J. Quant. Chem., 106, 344-350, 2006.
 
@@ -10,9 +9,9 @@ spin_label_cell = {'I1' 'I2' 'I3'};
 rho_ini = I1z; 
 % rho_ini = PO(length(spin_label_cell),{'I1z'},{1},spin_label_cell);
 obs_cell = {'I*'};
-phid = 1:1;
-% coef_cell = {}; % Special sym coefs
-% disp_bin = 1;
+phid = 1:6;
+coef_cell = {}; % Special sym coefs
+disp_bin = 1;
 % Para end %
 
 % PS begin %

@@ -1,8 +1,9 @@
 % Exp060_SpinEcho.m
+% Spin-echo (Hahn-echo) experiment with phase cycling.
+% Effect of the miscalibration of 180 pulse can be checked.
 
 clear
 close all
-% Spin-echo (Hahn-echo) experiment with phase cycling.
 
 % Phase tables
 phid = 1:16;

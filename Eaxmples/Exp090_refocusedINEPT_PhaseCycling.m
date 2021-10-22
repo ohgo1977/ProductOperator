@@ -1,12 +1,13 @@
 % Exp090_refocusedINEPT_PhaseCycling.m
-
-clear
-close all
 % refocused INEPT I => S
 % Example to check phase cycling.
 % Keeler, J., Understanding NMR Spectroscopy (1st Ed.), Wiley, 2005.
 % pp. 174 - 175.
 
+clear
+close all
+
+% % 2-steps
 % phid = 1:2;
 % ph1tab = [0,2];% I 90
 % ph2tab = [0];  % S INEPT 1st 180
@@ -17,8 +18,7 @@ close all
 % ph7tab = [0];  % I INEPT 3rd 180
 % phRtab = [0,2];% Receiver
 
-
-% % 16-steps
+% 16-steps
 phid = 1:16;
 ph1tab = [0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,2];% I 90
 ph2tab = [0,2,0,2];                        % S INEPT 1st 180

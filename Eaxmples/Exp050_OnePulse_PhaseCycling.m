@@ -1,8 +1,8 @@
 % Exp050_OnePulse_PhaseCycling.m
+% Example of writing a pulse sequence with phase cycling
 
 clear
 close all
-% Example of writing a pulse sequence with phase cycling
 
 % Phase tables
 phid = 1:4;

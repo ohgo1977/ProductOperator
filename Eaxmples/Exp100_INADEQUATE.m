@@ -1,13 +1,13 @@
 % Exp100_INADEQUATE.m
-
-clear
-close all
 % Levitt, M. H., Spin Dynamics(2nd Ed.), p.433.
 % 2D-INADEQUATE using -45 deg phase shift
 
+clear
+close all
+
 syms oI oS t
 rho = PO(2,{'Iz' 'Sz'});
-% rho = xyz2pmz(rho);
+% rho = xyz2pmz(rho);% Check the result in the pmz basis.
 rho.dispPOtxt();
 
 States = 'sin';

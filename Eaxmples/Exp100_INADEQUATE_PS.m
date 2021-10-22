@@ -1,8 +1,10 @@
 % Exp100_INADEQUATE_PS.m
+% Levitt, M. H., Spin Dynamics(2nd Ed.), p.433.
+% 2D-INADEQUATE using -45 deg phase shift
 
 % Para begin %
 phid = 1:1;
-phRtab = [0];     % Receiver phase
+phRtab = [0];
 % spin_label_cell = {'I1' 'I2'};
 % rho_ini = I1z + I2z;
 spin_label_cell = {'I' 'S'};
@@ -11,8 +13,8 @@ coef_cell = {}; % Special sym coefs
 obs_cell = {1 2};
 phi_vec = [0 -1/4*pi];
 States = 'sin';
-phi_id = [contains(States,'cos') contains(States,'sin')];
-phi = phi_vec(phi_id ~= 0);
+phi_id = [contains(States,'cos') contains(States,'sin')];% switch syntax
+phi = phi_vec(phi_id ~= 0);% switch syntax
 % Para end %
 
 % PS begin %

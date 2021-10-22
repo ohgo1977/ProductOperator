@@ -1,4 +1,8 @@
 % Exp090_refocusedINEPT_PhaseCycling_PS.m
+% refocused INEPT I => S
+% Example to check phase cycling.
+% Keeler, J., Understanding NMR Spectroscopy (1st Ed.), Wiley, 2005.
+% pp. 174 - 175.
 
 % Para begin %
 phid = 1:2;

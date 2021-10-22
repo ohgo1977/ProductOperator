@@ -1,8 +1,8 @@
 % Exp035_FreeEvolution.m
+% Comparison of the calculation speeds between UrhoUinv_mt() and UrhoUinv_M()
 
 clear
 close all
-% Comparison of the calculation speeds between UrhoUinv_mt() and UrhoUinv_M()
 
 % spin_label_cell = {'I' 'S'};% Case of two spins
 spin_label_cell = {'I' 'S' 'K'};% Case of three spins

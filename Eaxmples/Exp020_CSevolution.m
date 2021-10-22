@@ -1,8 +1,8 @@
 % Exp020_CSevolution.m
+% Example of chemical shift evolution
 
 clear
 close all
-% Example of chemical shift evolution
 
 % Symbolic constant
 syms q

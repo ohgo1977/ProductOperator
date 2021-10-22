@@ -1,10 +1,10 @@
 % Exp120HomoINEPT.m
+% Homonuclear INEPT
+% Movellan, T.K., ..., Andreas, L. B.
+% J. Am. Chem. Soc. 2020, 142, 2704-2708.
 
 clear
 close all
-% Homonuclear INEPT
-% Movellan, T.K., ..., Andreas, L. B.
-% J. Am. Chem. Soc. 2020, 142, 2704-2078.
 
 % Homonuclear pulses thus the phases of simpulse() shoud be same
 phid = 1:1;
@@ -89,14 +89,4 @@ for ii = phid
     
     coef = cat(1,coef,simplify([I_tmp S_tmp],100));
         
-%     coefS_tmp = rho.coef(1)*ph5sign*phRsign;
-%     coefI_tmp = rho.coef(2)*ph5sign*phRsign;
-% 
-%     I_tmp = coeffs(coefS_tmp + coefI_tmp,cos(oI*t1));
-%     I_tmp = I_tmp(2);
-%      
-%     S_tmp = coeffs(coefS_tmp + coefI_tmp,cos(oS*t1));
-%     S_tmp = S_tmp(2);
-%     
-%     coef = cat(1,coef,[I_tmp S_tmp]);
 end

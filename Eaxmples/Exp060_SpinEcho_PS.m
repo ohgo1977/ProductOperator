@@ -1,4 +1,6 @@
 % Exp060_SpinEcho_PS.m
+% Spin-echo (Hahn-echo) experiment with phase cycling.
+% Effect of the miscalibration of 180 pulse can be checked.
 
 % Para begin %
 phid = 1:16;

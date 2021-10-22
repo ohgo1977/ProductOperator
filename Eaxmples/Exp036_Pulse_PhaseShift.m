@@ -1,4 +1,5 @@
 % Exp036_Pulse_PhaseShift.m
+% Comparison of the calculation speeds between UrhoUinv_mt() and UrhoUinv_M()
 
 clear
 close all

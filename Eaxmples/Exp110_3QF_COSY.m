@@ -1,9 +1,9 @@
 % Exp110_3QF_COSY.m
+% Guntert, P. et al., J. Magn. Reson. Ser. A, 101, 103-105, 1993.
+% Guntert, P. Int. J. Quant. Chem., 106, 344-350, 2006.
 
 clear
 close all
-% Guntert, P. et al., J. Magn. Reson. Ser. A, 101, 103-105, 1993.
-% Guntert, P. Int. J. Quant. Chem., 106, 344-350, 2006.
 
 phid = 1:6;
 ph1tab = sym([0:5]*pi/3);% I 90

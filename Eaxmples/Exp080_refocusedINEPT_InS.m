@@ -1,9 +1,9 @@
 % Exp080_refocusedINEPT_InS.m
+% Intensity calculation of refocused INEPT in InS system (n = 1,2 or 3)
+% Levitt, M. H., Spin Dynamics (2nd Ed.), pp. 440 - 442, pp.488 - 491.
 
 clear
 close all
-% Intensity calculation of refocused INEPT in InS system (n = 1,2 or 3)
-% Levitt, M. H., Spin Dynamics (2nd Ed.), pp. 440 - 442, pp.488 - 491.
 
 InS = 'I3S';
 switch InS

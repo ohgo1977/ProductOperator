@@ -1,11 +1,11 @@
 % Exp150_RefocusingPulse_PFG.m
-
-clear
-close all
 % Keeler, J., Understanding NMR Spectroscopy, p. 406, 11.12.3
 % Gradient G - 180+d pulse - Gradient G 
 % The selection of P => -p pathway.
 % "Cleaning up" the results of an imperfect 180 pulse.
+
+clear
+close all
 
 syms G gH d
 pfg_switch = 1;
