@@ -18,9 +18,11 @@ tic;
 obj1 = rho.pulse_phshift('I',f,q);% UrhoUinv_mt() is called
 et1 = toc;
 fprintf(1,'UrhoUinv_mt(): %g s\n',et1);
+dispPOtxt(obj1);
 
 H = q*(Ix*cos(f) + Iy*sin(f));
 tic;
 obj2 = UrhoUinv(rho,H,1);% UrhoUinv_M() is called
 et2 = toc;
 fprintf(1,'UrhoUinv_M(): %g s\n',et2);
+dispPOtxt(obj2);

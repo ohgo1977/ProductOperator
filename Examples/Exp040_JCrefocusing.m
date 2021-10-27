@@ -11,7 +11,7 @@ close all
 PO.create({'I' 'S'});
 rho = Ix + Sx;
 
-%% If the constructor PO() is used
+% If the constructor PO() is used
 % syms J12 t oI oS
 % rho = PO(2,{'Ix' 'Sx'});% Initial State
 
