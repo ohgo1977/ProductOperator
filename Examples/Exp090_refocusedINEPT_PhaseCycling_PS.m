@@ -21,10 +21,10 @@ obs_cell = {'S'};
 % Para end %
 
 % PS begin %
-rho = rho.pulse('I',ph1,1/2*pi);                        
-rho = rho.simpulse({'I' 'S'},{ph3 ph2},{pi pi});        
-rho = rho.jc('IS',pi*J*2*t1);                           
-rho = rho.simpulse({'I' 'S'},{ph5 ph4},{1/2*pi 1/2*pi});
-rho = rho.simpulse({'I' 'S'},{ph7 ph6},{pi pi});        
-rho = rho.jc('IS',pi*J*2*t2);                           
+rho = rho.pulse({'I'},{ph1},{1/2*pi});                        
+rho = rho.pulse({'I' 'S'},{ph3 ph2},{pi pi});        
+rho = rho.jc({'IS'},{pi*J*2*t1});                           
+rho = rho.pulse({'I' 'S'},{ph5 ph4},{1/2*pi 1/2*pi});
+rho = rho.pulse({'I' 'S'},{ph7 ph6},{pi pi});        
+rho = rho.jc({'IS'},{pi*J*2*t2});                           
 % PS end %

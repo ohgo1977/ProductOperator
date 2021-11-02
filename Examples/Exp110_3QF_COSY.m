@@ -26,11 +26,11 @@ for ii = phid
     rho = rho_ini;
     rho.dispPOtxt();
 
-    rho = rho.simpulse_phshift({'I*'},{ph1},{1/2*pi});
-    rho = rho.simcs({'I*'},{o1*t1});
-    rho = rho.simjc({'I1I2' 'I1I3'},{pi*J12*t1 pi*J13*t1});
-    rho = rho.simpulse_phshift({'I*'},{ph1},{1/2*pi});
-    rho = rho.simpulse({'I*'},{0},{1/2*pi});
+    rho = rho.pulse_phshift({'I*'},{ph1},{1/2*pi});
+    rho = rho.cs({'I*'},{o1*t1});
+    rho = rho.jc({'I1I2' 'I1I3'},{pi*J12*t1 pi*J13*t1});
+    rho = rho.pulse_phshift({'I*'},{ph1},{1/2*pi});
+    rho = rho.pulse({'I*'},{0},{1/2*pi});
 
     rho_detect = receiver(rho,phR);
     rho_total = rho_detect + rho_total;

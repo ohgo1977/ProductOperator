@@ -31,35 +31,37 @@ for ii = phid
 % Short CP: only I spin being close to 1Hs is polarized.
     rho = PO(2,{'Iz'});% Both I and S are 15N
     rho.dispPOtxt();
-    rho = pulse(rho,'I',ph1,pi/2);
+    rho = pulse(rho,{'I'},{ph1},{pi/2});
 
 % Long CP: both I and S spins are excited.
-%     rho = PO(2,{'Iz' 'Sz'});% Both I and S are 15N
-%     rho.dispPOtxt();
-%     rho = simpulse(rho,{'I' 'S'},{ph1 ph1},{pi/2 pi/2});
+    % rho = PO(2,{'Iz' 'Sz'});% Both I and S are 15N
+    % rho.dispPOtxt();
+    % rho = pulse(rho,{'I' 'S'},{ph1 ph1},{pi/2 pi/2});
 
     % 1st INEPT
-    rho = jc(rho,'IS',pi*J*t);
-    rho = simpulse(rho,{'I' 'S'},{ph2 ph2},{pi pi});
-    rho = jc(rho,'IS',pi*J*t);
+    rho = jc(rho,{'IS'},{pi*J*t});
+    rho = pulse(rho,{'I' 'S'},{ph2 ph2},{pi pi});
+    rho = jc(rho,{'IS'},{pi*J*t});
 
     % 90 pulse - t1 - 90 pulse
-    rho = simpulse(rho,{'I' 'S'},{'y' 'y'},{pi/2 pi/2});
-    rho = simcs(rho,{'I' 'S'},{oI*t1 oS*t1});
+    rho = pulse(rho,{'I' 'S'},{'y' 'y'},{pi/2 pi/2});
+    rho = cs(rho,{'I' 'S'},{oI*t1 oS*t1});
     id_vec = findcoef(rho,{sin(oI*t1) sin(oS*t1)});
     rho = delPO(rho,id_vec);% Delete the term with sin(oI*t1) and sin(oS*t1)
-    rho = simpulse(rho,{'I' 'S'},{'y' 'y'},{pi/2 pi/2});
+    rho = pulse(rho,{'I' 'S'},{'y' 'y'},{pi/2 pi/2});
     
     % 2nd INEPT
-    rho = jc(rho,'IS',pi*J*t);
-    rho = simpulse(rho,{'I' 'S'},{ph3 ph3},{pi pi});
-    rho = jc(rho,'IS',pi*J*t);
+    rho = jc(rho,{'IS'},{pi*J*t});
+    rho = pulse(rho,{'I' 'S'},{ph3 ph3},{pi pi});
+    rho = jc(rho,{'IS'},{pi*J*t});
 
     % Z-filter
-    rho = simpulse(rho,{'I' 'S'},{ph4 ph4},{pi/2 pi/2});
-    rho = simpulse(rho,{'I' 'S'},{'x' 'x'},{pi/2 pi/2});
+    rho = pulse(rho,{'I' 'S'},{ph4 ph4},{pi/2 pi/2});
+    rho = pulse(rho,{'I' 'S'},{'x' 'x'},{pi/2 pi/2});
 
     rho = delPO(rho,{'IxSz'});% delete 2IxSz term
+    rho = delPO(rho,{'SzSx'});% delete 2SxIx term
+    
     
     % 15N => 1H CP
     % ph5 is y or -y
@@ -82,10 +84,8 @@ for ii = phid
     coefI_tmp = rho.coef(1)*ph5sign*phRsign;
 
     I_tmp = coeffs(coefI_tmp,cos(oI*t1));
-    I_tmp = I_tmp(2);
      
     S_tmp = coeffs(coefI_tmp,cos(oS*t1));
-    S_tmp = S_tmp(2);
     
     coef = cat(1,coef,simplify([I_tmp S_tmp],100));
         

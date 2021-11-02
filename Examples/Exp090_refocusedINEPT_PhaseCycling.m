@@ -52,14 +52,14 @@ for ii = phid
     phR = PO.phmod(phRtab,ii);
 
     % OOP dot-style, CS ommitted, Pulse positions moved.
-    rho = rho_ini;                                          % Preparation of the initial rho  
+    rho = rho_ini;                                       % Preparation of the initial rho  
     rho.dispPOtxt();
-    rho = rho.pulse('I',ph1,1/2*pi);                        % I 90 pulse
-    rho = rho.simpulse({'I' 'S'},{ph3 ph2},{pi pi});        % I,S 180 pulses
-    rho = rho.jc('IS',pi*J*2*t1);                           % J-coupling evolution
-    rho = rho.simpulse({'I' 'S'},{ph5 ph4},{1/2*pi 1/2*pi});% I,S 90 pulses
-    rho = rho.simpulse({'I' 'S'},{ph7 ph6},{pi pi});        % I,S 180 pulses
-    rho = rho.jc('IS',pi*J*2*t2);                           % J-coupling evolution
+    rho = rho.pulse({'I'},{ph1},{1/2*pi});               % I 90 pulse
+    rho = rho.pulse({'I' 'S'},{ph3 ph2},{pi pi});        % I,S 180 pulses
+    rho = rho.jc({'IS'},{pi*J*2*t1});                    % J-coupling evolution
+    rho = rho.pulse({'I' 'S'},{ph5 ph4},{1/2*pi 1/2*pi});% I,S 90 pulses
+    rho = rho.pulse({'I' 'S'},{ph7 ph6},{pi pi});        % I,S 180 pulses
+    rho = rho.jc({'IS'},{pi*J*2*t2});                    % J-coupling evolution
 
     rho_detect = receiver(rho,phR);
     rho_total = rho_detect + rho_total;

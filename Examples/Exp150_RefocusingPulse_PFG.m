@@ -37,7 +37,7 @@ if pfg_switch == 1
 end
 
 % Imperfect 180 pulse (pi + d)
-rho = simpulse(rho,{'I*'},{'x'},{pi + d});
+rho = pulse(rho,{'I*'},{'x'},{pi + d});
 
 % PFG
 if pfg_switch == 1

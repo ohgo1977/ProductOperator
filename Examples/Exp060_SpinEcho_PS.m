@@ -14,9 +14,9 @@ obs_cell = {'I'};
 % Para end %
 
 % PS begin %
-rho = rho.pulse(1,ph1,1/2*pi);% 90-pulse
-rho = rho.cs(1,oI*t);% Chemical shift evolution
-% rho = rho.pulse(1,ph2,pi);% 180-pulse
-rho = rho.pulse(1,ph2,pi+d);% 180+d-pulse, where d indicates the miscalibration of 180-pulse
-rho = rho.cs(1,oI*t);% Chemical shift evolution                       
+rho = rho.pulse({1},{ph1},{1/2*pi});% 90-pulse
+rho = rho.cs({1},{oI*t});% Chemical shift evolution
+% rho = rho.pulse({1},{ph2},{pi});% 180-pulse
+rho = rho.pulse({1},{ph2},{pi+d});% 180+d-pulse, where d indicates the miscalibration of 180-pulse
+rho = rho.cs({1},{oI*t});% Chemical shift evolution                       
 % PS end %

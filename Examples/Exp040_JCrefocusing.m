@@ -16,14 +16,14 @@ rho = Ix + Sx;
 % rho = PO(2,{'Ix' 'Sx'});% Initial State
 
 rho.dispPOtxt();
-rho = rho.cs('I',oI*t/2);
-rho = rho.cs('S',oS*t/2);
-rho = rho.jc('IS',pi*J12*t/2);
+rho = rho.cs({'I'},{oI*t/2});
+rho = rho.cs({'S'},{oS*t/2});
+rho = rho.jc({'IS'},{pi*J12*t/2});
 
-rho = rho.pulse('S','x',pi);% Refocusing pulse on S
+rho = rho.pulse({'S'},{'x'},{pi});% Refocusing pulse on S
 % What if refocusing pulse is also applied to I.
-% rho = rho.pulse('I','x',pi);% Refocusing pulse on I
+% rho = rho.pulse({'I'},{'x'},{pi});% Refocusing pulse on I
 
-rho = rho.cs('I',oI*t/2);
-rho = rho.cs('S',oS*t/2);
-rho = rho.jc('IS',pi*J12*t/2);
+rho = rho.cs({'I'},{oI*t/2});
+rho = rho.cs({'S'},{oS*t/2});
+rho = rho.jc({'IS'},{pi*J12*t/2});

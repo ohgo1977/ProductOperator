@@ -12,5 +12,5 @@ obs_cell = {'I'};
 % Para end %
 
 % PS begin %
-rho = rho.pulse(1,ph1,pi/2);% 90-pulse                    
+rho = rho.pulse({1},{ph1},{pi/2});% 90-pulse                    
 % PS end %

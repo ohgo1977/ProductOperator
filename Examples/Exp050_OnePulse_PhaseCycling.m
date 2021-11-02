@@ -24,7 +24,7 @@ for ii = phid
 
     rho = rho_ini;
     rho.dispPOtxt();% Display Initial state
-    rho = rho.pulse(1,ph1,pi/2);% 90-pulse
+    rho = rho.pulse({1},{ph1},{pi/2});% 90-pulse
 
     rho_detect = receiver(rho,phR);
     rho_total = rho_detect + rho_total;

@@ -18,9 +18,9 @@ phi = phi_vec(phi_id ~= 0);% switch syntax
 % Para end %
 
 % PS begin %
-rho = rho.simpulse_phshift({1 2},{phi phi},{3/2*pi 3/2*pi});
-rho = rho.jc([1 2],pi/2);
-rho = rho.simpulse_phshift({1 2},{phi phi},{1/2*pi 1/2*pi});     
-rho = rho.simcs({1 2},{o1*t o2*t});
-rho = rho.simpulse({1 2},{'y' 'y'},{pi/2 pi/2});
+rho = rho.pulse_phshift({1 2},{phi phi},{3/2*pi 3/2*pi});
+rho = rho.jc({[1 2]},{pi/2});
+rho = rho.pulse_phshift({1 2},{phi phi},{1/2*pi 1/2*pi});     
+rho = rho.cs({1 2},{o1*t o2*t});
+rho = rho.pulse({1 2},{'y' 'y'},{pi/2 pi/2});
 % PS end %

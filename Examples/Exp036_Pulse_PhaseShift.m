@@ -15,7 +15,7 @@ rho = Iz;
 rho.disp = 0;
 
 tic;
-obj1 = rho.pulse_phshift('I',f,q);% UrhoUinv_mt() is called
+obj1 = rho.pulse_phshift({'I'},{f},{q});% UrhoUinv_mt() is called
 et1 = toc;
 fprintf(1,'UrhoUinv_mt(): %g s\n',et1);
 dispPOtxt(obj1);

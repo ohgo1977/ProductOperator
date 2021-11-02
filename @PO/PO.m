@@ -1125,9 +1125,9 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
         end
         % UrhoUinv
 
-        %% obj = pulse(obj,sp,ph,q)
-        function [obj, id_sp] = pulse(obj,sp,ph,q)
-            % obj = pulse(obj,sp,ph,q)
+        %% obj = pulse1(obj,sp,ph,q)
+        function [obj, id_sp] = pulse1(obj,sp,ph,q)
+            % obj = pulse1(obj,sp,ph,q)
             % Calculation of the change of rho under a pulse.
             % obj: PO class object
             % sp: type of spin, character of spin ('I' or 'S' etc.) or
@@ -1198,9 +1198,9 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
         end 
         % pulse
         
-        %% obj = simpulse(obj,sp_cell,ph_cell,q_cell)
-        function obj = simpulse(obj,sp_cell,ph_cell,q_cell)
-            % obj = simpulse(obj,sp_cell,ph_cell,q_cell)
+        %% obj = pulse(obj,sp_cell,ph_cell,q_cell)
+        function obj = pulse(obj,sp_cell,ph_cell,q_cell)
+            % obj = pulse(obj,sp_cell,ph_cell,q_cell)
             % Calculation of the change of rho under simultaneous pulses.
             % obj: PO class object
             % sp_cell: type of spins in a cell.
@@ -1211,7 +1211,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             % quadrature phase only.
             % q_cell: flip angles (rad) in a cell (symbolic or double)
             % Exmaple:
-            % rho_new = simpulse(rho,{'I' 'S'},{'x' 'y'},{pi/2 pi/2})
+            % rho_new = pulse(rho,{'I' 'S'},{'x' 'y'},{pi/2 pi/2})
             
             spin_label_cell = obj.spin_label;
             [id_vec, ii_vec] = PO.sp2id(sp_cell,spin_label_cell);
@@ -1219,14 +1219,14 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 sp = id_vec(ii); % double
                 ph = ph_cell{ii_vec(ii)};
                 q  =  q_cell{ii_vec(ii)};
-                obj = pulse(obj,sp,ph,q);
+                obj = pulse1(obj,sp,ph,q);
             end
         end 
         % simpulse
         
-        %% obj = cs(obj,sp,q)
-        function [obj, id_sp] = cs(obj,sp,q)
-            % obj = cs(obj,sp,q)
+        %% obj = cs1(obj,sp,q)
+        function [obj, id_sp] = cs1(obj,sp,q)
+            % obj = cs1(obj,sp,q)
             % Calculation of the chemical shift evolution of rho.
             % obj: PO class object
             % sp: type of spin, character of spin ('I' or 'S' etc.) or
@@ -1277,25 +1277,25 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             end
 
         end 
-        % cs
+        % cs1
         
-        %% obj = simcs(obj,sp_cell,q_cell)
-        function obj = simcs(obj,sp_cell,q_cell)
-            % obj = simcs(obj,sp_cell,q_cell)
+        %% obj = cs(obj,sp_cell,q_cell)
+        function obj = cs(obj,sp_cell,q_cell)
+            % obj = cs(obj,sp_cell,q_cell)
 
             spin_label_cell = obj.spin_label;
             [id_vec, ii_vec] = PO.sp2id(sp_cell,spin_label_cell);
             for ii = 1:length(id_vec)
                 sp = id_vec(ii);% double
                 q  =  q_cell{ii_vec(ii)};
-                obj = cs(obj,sp,q);
+                obj = cs1(obj,sp,q);
             end
         end 
-        % simcs        
+        % cs        
         
-        %% obj = jc(obj,sp,q)
-        function [obj, id_sp] = jc(obj,sp,q)
-            % obj = jc(obj,sp,q)
+        %% obj = jc1(obj,sp,q)
+        function [obj, id_sp] = jc1(obj,sp,q)
+            % obj = jc1(obj,sp,q)
 
             basis_org = obj.basis;
             s0 = obj.logs;
@@ -1351,20 +1351,20 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 fprintf(1,'%s\n',s2);
             end
         end 
-        % jc 
+        % jc1
        
-        %% obj = simjc(obj,sp_cell,q_cell)
-        function obj = simjc(obj,sp_cell,q_cell)
-            % obj = simjc(obj,sp_cell,q_cell)
+        %% obj = jc(obj,sp_cell,q_cell)
+        function obj = jc(obj,sp_cell,q_cell)
+            % obj = jc(obj,sp_cell,q_cell)
             obj_tmp = obj;
             for ii = 1:max(size(sp_cell))
                sp = sp_cell{ii};
                q = q_cell{ii};
-               obj_tmp = jc(obj_tmp,sp,q);
+               obj_tmp = jc1(obj_tmp,sp,q);
             end
             obj = obj_tmp;
         end
-        % simjc
+        % jc
 
         %% dispPOtxt(obj)
         function dispPOtxt(obj)
@@ -1406,9 +1406,9 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
         end 
         % dispPO
        
-        %% obj = pulse_phshift(obj,sp,ph,q)
-        function obj = pulse_phshift(obj,sp,ph,q)
-            % obj = pulse_phshift(obj,sp,ph,q)
+        %% obj = pulse_phshift1(obj,sp,ph,q)
+        function obj = pulse_phshift1(obj,sp,ph,q)
+            % obj = pulse_phshift1(obj,sp,ph,q)
             % Calculation of the change of rho under a pulse with arbitrary phase.
             % obj: PO class object
             % sp: type of spin, character of spin ('I' or 'S' etc.) or
@@ -1446,9 +1446,9 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             disp_org = obj.disp;
             obj.disp = 0;
             s0 = obj.logs;
-            obj = cs(obj,sp,-ph);        % 1. Rotation -ph along Z axis
-            obj = pulse(obj,sp,'x',q);   % 2. Rotation   q along X axis
-            [obj, id_sp] = cs(obj,sp,ph);% 3. Rotation  ph along Z axis.
+            obj = cs1(obj,sp,-ph);        % 1. Rotation -ph along Z axis
+            obj = pulse1(obj,sp,'x',q);   % 2. Rotation   q along X axis
+            [obj, id_sp] = cs1(obj,sp,ph);% 3. Rotation  ph along Z axis.
             obj.disp = disp_org;
 
             spin_label_cell = obj.spin_label;
@@ -1474,11 +1474,11 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 fprintf(1,'%s',s2);
             end
         end 
-        % pulse_phshift
+        % pulse_phshift1
         
-        %% obj = simpulse_phshift(obj,sp_cell,ph_cell,q_cell)
-        function obj = simpulse_phshift(obj,sp_cell,ph_cell,q_cell)
-            % obj = simpulse_phshift(obj,sp_cell,ph_cell,q_cell)
+        %% obj = pulse_phshift(obj,sp_cell,ph_cell,q_cell)
+        function obj = pulse_phshift(obj,sp_cell,ph_cell,q_cell)
+            % obj = pulse_phshift(obj,sp_cell,ph_cell,q_cell)
 
             spin_label_cell = obj.spin_label;
             [id_vec, ii_vec] = PO.sp2id(sp_cell,spin_label_cell);
@@ -1486,11 +1486,11 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 sp = id_vec(ii);% double
                 ph = ph_cell{ii_vec(ii)};
                 q  =  q_cell{ii_vec(ii)};
-                obj = pulse_phshift(obj,sp,ph,q);
+                obj = pulse_phshift1(obj,sp,ph,q);
             end
 
         end 
-        % simpulse_phshift
+        % pulse_phshift
 
         %% obj = pfg(obj,G,gamma_cell)
         function obj = pfg(obj,G,gamma_cell)
@@ -1510,7 +1510,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             for jj = id_vec
                 sp_tmp = spin_label_cell{jj};
                 q = G*Z*gamma_cell{jj};
-                obj_tmp = cs(obj_tmp,sp_tmp,q);
+                obj_tmp = cs1(obj_tmp,sp_tmp,q);
             end
             obj = obj_tmp;
         end 
@@ -1576,7 +1576,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             spin_no = length(sp_cell);
 
             q_cell = PO.v2cell(-q,sp_cell);% Rotation of -q around Z-axis
-            obj = simcs(obj,sp_cell,q_cell);
+            obj = cs(obj,sp_cell,q_cell);
             obj.disp = disp_org;
 
             s_out = sprintf('Receiver with %s',PO.ph_num2str(phR));
@@ -1699,6 +1699,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             % This should be Hadamard product
             % rho.M.*(Im.M + Sm.M + ...) extracts only (-1)-quantum coherence components in rho, 
             % i.e., (Im.M + Sm.M + ...) works as a mask.
+            % rho.M.*(Im.M + Sm.M + ...) is equivalent to trace(rho.M*(Ip.M + Sp.M + ...))
 
             a0_V = 2*1i*PO.rec_coef(phR)*a0_V;
 
@@ -2240,7 +2241,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
         
 
         %% obj = mrdivide(obj1, obj2)
-        function obj = mrdivide(obj1, obj2) %obj1/obj2
+        function obj = mrdivide(obj1, obj2)
             if isa(obj2,'double')||isa(obj2,'sym') ||isa(obj2,'char') % obj1/a
                 obj_base = obj1;
                 coef_tmp = sym(obj2);

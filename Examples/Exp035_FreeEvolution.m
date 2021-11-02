@@ -14,7 +14,7 @@ fprintf(1,'Evolution of Ix under chemical shift and J-coupling\n')
 fprintf(1,'Number of Spins: %d\n',length(spin_label_cell));
 
 tic;
-obj1 = rho.cs('I',o1*t).jc('IS',pi*JIS*t);% UrhoUinv_mt() is called
+obj1 = rho.cs({'I'},{o1*t}).jc({'IS'},{pi*JIS*t});% UrhoUinv_mt() is called
 et1 = toc;
 fprintf(1,'UrhoUinv_mt(): %g s\n',et1);
 dispPOtxt(obj1);

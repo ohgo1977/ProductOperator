@@ -33,12 +33,12 @@ q2 = pi*J*t;
 q2_cell = PO.v2cell(q2,jc_cell);
 
 dispPOtxt(rho);
-rho = simpulse(rho,{'I*' 'S*'},{'x' 'x'},{3/2*pi pi});
-rho = simjc(rho,jc_cell,q1_cell);
+rho = pulse(rho,{'I*' 'S*'},{'x' 'x'},{3/2*pi pi});
+rho = jc(rho,jc_cell,q1_cell);
 
-rho = simpulse(rho,{'I*' 'S*'},{'y' 'y'},{1/2*pi 1/2*pi});
-rho = simpulse(rho,{'I*' 'S*'},{'x' 'x'},{pi pi});
-rho = simjc(rho,jc_cell,q2_cell);
+rho = pulse(rho,{'I*' 'S*'},{'y' 'y'},{1/2*pi 1/2*pi});
+rho = pulse(rho,{'I*' 'S*'},{'x' 'x'},{pi pi});
+rho = jc(rho,jc_cell,q2_cell);
 
 rho_detect = receiver(rho,'x');
 rho_final = observable(rho_detect,{'S*'});
