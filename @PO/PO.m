@@ -68,6 +68,9 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 % Control to keep the logs property or not. (1: yes, 0: no)
                 % The logs property calls obj.txt, and this process cause a small delay.
 
+        % PFGq = [];
+        %         % Angles used for PFG. PFGq is used in dephase().
+                
     end
 
     %% 
@@ -96,6 +99,9 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
     properties % No access limit
         disp = 1    % Control the display of the applied method on the monitor.
                     % 1: On, 2: Off
+
+        PFGq = [];
+                    % Angles used for PFG. PFGq is used in dephase().
     end
     
 
@@ -1511,45 +1517,103 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 sp_tmp = spin_label_cell{jj};
                 q = G*Z*gamma_cell{jj};
                 obj_tmp = cs1(obj_tmp,sp_tmp,q);
+                obj_tmp.PFGq = cat(2,obj_tmp.PFGq,q);
             end
             obj = obj_tmp;
         end 
         % pfg
 
+
         %% obj = dephase(obj)
-        function obj = dephase(obj, coef_cell)
+        function obj = dephase(obj)
             % obj = dephase(obj)
             % delete terms affected by pfg().
-            % if coef_cell is not assigned, terms including Z in coef are deleted.
-            % if coef_cell is assigned, terms including Z*coef_cell{1}*coef_cell{2}*...*coef_cell{end}
-            % are deleted.
             % This method was obitaned from POMA by Gunter (2006).
 
             basis_org = obj.basis;
             s0 = obj.logs;
-            obj = set_basis(obj,'pol');
+            obj = set_basis(obj,'pmz');
+            % Checking execution time (s) 
+            % using Ix*cos(G*Z*gH*t) - Iy*sin(G*Z*gH*t) + Sz + Kx*sin(G*Z*gC*t) + Ky*cos(G*Z*gC*t)
+            %               Conversion of basis in the code (above line)
+            % input basis   xyz pmz pol Non
+            %         xyz   1.3 1.6 6.7 1.4
+            %         pmz   1.9 1.2 8.3 1.3
+            %         pol   3.2 3.8 5.0 5.4
 
-            coef_tmp = sym('Z');
-            if nargin < 2
-                coef_cell = {1};
+            PFGq_in = obj.PFGq;
+            syms Zpfg
+
+            PFGq = [];
+            for ii = 1:length(PFGq_in)
+                se = children(PFGq_in(ii));
+                try % including symbolic number in se, e.g., 3 in G*Z*gH*3.
+                    v_tmp = double(se{end});
+                    PFGq_tmp = prod([se{1:end-1}]);% Remove number
+                    PFGq = cat(2,PFGq,PFGq_tmp);
+                catch
+                    PFGq = cat(2,PFGq,PFGq_in(ii));
+                end
             end
 
-            for ii = 1:length(coef_cell)
-                coef_tmp = coef_tmp*coef_cell{ii};
+            PFGq = unique(PFGq);
+            for ii = 1:size(obj.coef,1)
+                coef_in = obj.coef(ii);
+                s = expand(rewrite(coef_in,'exp'));
+                
+                sb = s;
+                for jj = 1:length(PFGq)
+                    PFGq_tmp = PFGq(jj);
+                    sb = subs(sb,PFGq_tmp,-1i*Zpfg);% exp(-2*G*Z*gH*1i) => exp(-2*Zpfg)
+                end
+
+                % https://www.mathworks.com/matlabcentral/answers/455911-find-child-subexpressions-of-symbolic-expression
+                % Unfortunately, it is very difficult to obtain the internal structure of a symbolic expression in MATLAB.
+                % As a result, it is not easy to manupulate particular terms including Zpfg, i.e., exp(n*Zpfg) in, for example,
+                % sp =  (exp(3.5*Zpfg)*exp(-o1*t1*1i)*exp(-pi*J12*t1*1i)*1i)/8 + (exp(2*Zpfg)*exp(-o1*t1*1i)*exp(pi*J12*t1*1i)*1i)/8;
+                % In the code below, the terms exp(n*Zpfg) are extracted from the string corresponding to sb.
+
+                st = char(sb);
+                id_Zpfg = findstr(st,'Zpfg');
+                id_lp = findstr(st,'(');
+                id_rp = findstr(st,')');
+                id_exp = findstr(st,'exp');
+                
+                PFG_mat = [];
+                for jj = 1:length(id_Zpfg)
+                    id_tmp = id_Zpfg(jj); % Position of Zpfg
+                                                                  
+                    id_lp_vec = id_lp(find(id_lp < id_tmp)); % Positions of ( on the left side of Zpfg
+                    id_lp_tmp = id_lp_vec(end);  % Position of the closest ( on the left side of Zpfg 
+                                
+                    id_exp_vec = id_exp(find(id_exp < id_tmp)); % Positions of exp on the left side of Zpfg
+                    id_exp_tmp = id_exp_vec(end); % Position of the closest exp on the left side of Zpfg
+                                                                   % exp( (n*Zpfg)/m)
+                    cv1 = id_lp_vec(find(id_lp_vec > id_exp_tmp)); %  =>( ( 
+                    cv2 = id_lp_vec(find(id_lp_vec <= id_lp_tmp)); %    ( (<=
+                    Lia = ismember(cv1,cv2)                        %    1 1, meaning there are two lps.
+                                                                   % exp( (n*Zpfg)/m) 
+                    id_rp_vec = id_rp(find(id_rp > id_tmp));       %             )  )
+                    id_rp_tmp = id_rp_vec(sum(Lia));               %                )<= additional rp to ajudst tolal two rps.
+
+                    st_tmp = st(id_exp_tmp : id_rp_tmp);
+                    % fprintf(1,'%s\n',st_tmp);
+                    PFG_mat = cat(2,PFG_mat,str2sym(st_tmp)); % Conversion from char to sym.
+                end
+                PFG_mat = unique(PFG_mat);
+                
+                coef_out = sp;
+                for jj = 1:length(PFG_mat)
+                    coef_out = subs(coef_out,PFG_mat(jj),0);
+                end
+ 
+                coef_out = rewrite(coef_out,'sincos');
+                obj.coef(ii) = coef_out;
             end
-
-            id_out = findcoef(obj,{coef_tmp});
-
-            if length(id_out) == length(obj.coef)
-                obj.coef = sym(zeros(size(obj.coef)));
-                obj = CombPO(obj);                
-            else
-                obj = delPO(obj,id_out);
-            end
-
+            obj = CombPO(obj);
             obj = set_basis(obj,basis_org);
 
-            s_out = sprintf('Dephasing of terms including %s',char(coef_tmp));
+            s_out = sprintf('Dephasing of terms including %s',char(PFGq));
 
             s1 = sprintf('%s',s_out);
             s2 = sprintf('    %s',obj.txt);
@@ -1598,6 +1662,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 sp_cell = spin_label_cell;
             end
 
+            basis_org = obj.basis;
             s0 = obj.logs;
             if ~strcmp(obj.basis,'xyz')
                 obj = set_basis(obj,'xyz');
@@ -1618,6 +1683,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 end
             end
             obj = selPO(obj,id_in);
+            obj = set_basis(obj,basis_org);
 
             if isa(cell2mat(sp_cell),'double')
                 s_out = sprintf('Selecting Observable of %s',cell2mat(spin_label_cell(cell2mat(sp_cell))));

@@ -6,7 +6,7 @@
 clear
 close all
 
-% Homonuclear pulses thus the phases of simpulse() shoud be same
+% Homonuclear pulses thus the phases of pulse() shoud be same
 phid = 1:1;
 ph1tab = [2 2 0 0];% Converted from (1H, 15N) phases for CP => 15N One pulse phase
 ph2tab = [0*ones(1,8) 1*ones(1,8)];

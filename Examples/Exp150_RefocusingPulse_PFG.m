@@ -46,5 +46,5 @@ end
 
 dispPO(rho);
 
-rho = dephase(rho);
-dispPO(rho);
+rho_dephase = dephase(rho);
+dispPO(rho_dephase);
