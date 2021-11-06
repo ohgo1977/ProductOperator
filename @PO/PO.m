@@ -884,29 +884,184 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
         end
         % pol2xyz
 
-        %% obj = pmz2pol(obj)
+        % obj = pmz2pol(obj)
         function obj = pmz2pol(obj)
+            % obj = pmz2pol(obj)
+            % conversion from lowring/raising operator basis to Polarization operator basis
+
             if ~strcmp(obj.basis,'pmz')
-                error('The basis of the object should be pmz')
+                error('The basis of the object should be pol')
             end
-            s1 = obj.logs;
-            obj = pmz2xyz(obj);
-            obj = xyz2pol(obj);
-            obj.logs = char(s1,obj.txt);
-            % Future version: direct conversin from pmz to pol
+
+            axis_in = obj.axis;
+            coef_in = obj.coef;
+            Ncoef_in = obj.Ncoef;
+            spin_no = size(axis_in,2);
+        
+            axis_out = [];
+            coef_out = [];
+            for ii = 1:size(axis_in,1)
+                axis_tmp = axis_in(ii,:);
+                if isempty(find(axis_tmp == 3,1)) && isempty(find(axis_tmp == 0,1))% Not including Iz (3) and E (0)
+                    axis_out_tmp = axis_tmp;
+                    coef_out_tmp = 1;
+                else
+                    % Conversion from Iz and E to Ia and Ib
+                    xn = length(find(axis_tmp == 0));
+                    yn = length(find(axis_tmp == 3));
+                    xyn = 2^(xn + yn);
+                    axis_out_tmp = repmat(axis_tmp,xyn,1);
+                    axis_out_tmp(axis_out_tmp == 0) = 0;
+                    axis_out_tmp(axis_out_tmp == 3) = 0;
+                    coef_out_tmp = ones(xyn,1);
+            
+                    dec = 0:xyn - 1;
+                    bin_mat = de2bi(dec,(xn + yn),'left-msb');
+                    bin_mat (bin_mat == 0) = 6;
+                    bin_mat (bin_mat == 1) = 7;
+                    % Creation of the pattern
+                    % If xn + yn = 2, there are 4 terms with using a and b.
+                    % The all combinations are
+                    % 6 6 
+                    % 6 7
+                    % 7 6
+                    % 7 7
+
+                    int_count = 0;
+                    for jj = 1:spin_no
+                        axis_v = axis_tmp(jj);
+                        if axis_v == 3 || axis_v == 0
+                            int_count = int_count + 1;
+                            bin_vec = bin_mat(:,int_count);
+                            axis_out_tmp(:,jj) = bin_vec;
+
+                            c_tmp = ones(size(bin_vec));
+                            if axis_v == 3 % Iz = 1/2*Ia - 1/2*Ib
+                                c_tmp(bin_vec == 6) = 1/2;% No Nceof in pmz, thus need to define
+                                c_tmp(bin_vec == 7) = -1/2;
+                            elseif axis_v == 0 % E = Ia + Ib
+                                c_tmp(bin_vec == 6) = 1;% No Nceof in pmz, thus need to define
+                                c_tmp(bin_vec == 7) = 1;
+                            end
+                            coef_out_tmp = coef_out_tmp.*c_tmp;
+                        end
+                    end
+                end
+
+                % Combine terms
+                axis_out = [axis_out;axis_out_tmp];
+                coef_out_tmp = coef_out_tmp*coef_in(ii)*Ncoef_in(ii);% Ncoef => coef
+                coef_out = [coef_out;coef_out_tmp];
+            end % ii
+        
+            bracket_out = [];
+            for ii = 1:length(coef_out)
+                symcoef = coef_out(ii);
+                if contains(char(symcoef),'+')||contains(char(symcoef),'-')% 'a+b' or 'a-b'-type coefficients
+                    bracket_out = cat(1,bracket_out,1);
+                else
+                    bracket_out = cat(1,bracket_out,0);
+                end
+            end
+        
+            obj2 = obj;
+            obj2.axis = axis_out;
+            obj2.coef = coef_out;
+            obj2.bracket = bracket_out;
+            obj2.basis = 'pol';
+            obj = CombPO(obj2);
+            obj.logs = char(obj2.logs,sprintf('%s',obj.txt));
         end
         % pmz2pol
 
-        %% obj = pol2pmz(obj)
+
+        % obj = pol2pmz(obj)
         function obj = pol2pmz(obj)
+            % obj = pol2pmz(obj)
+            % conversion from Polarization operator basis to lowring/raising operator basis
+
             if ~strcmp(obj.basis,'pol')
                 error('The basis of the object should be pol')
             end
-            s1 = obj.logs;
-            obj = pol2xyz(obj);
-            obj = xyz2pmz(obj);
-            obj.logs = char(s1,obj.txt);
-            % Future version: direct conversin from pmz to pol
+
+            axis_in = obj.axis;
+            coef_in = obj.coef;
+            Ncoef_in = obj.Ncoef;
+            spin_no = size(axis_in,2);
+        
+            axis_out = [];
+            coef_out = [];
+            for ii = 1:size(axis_in,1)
+                axis_tmp = axis_in(ii,:);
+                if isempty(find(axis_tmp == 6,1)) && isempty(find(axis_tmp == 7,1))% Not including Ia (6) and Ib (7)
+                    axis_out_tmp = axis_tmp;
+                    coef_out_tmp = 1;
+                else
+                    % Conversion from Ia and Ib to Iz and E
+                    xn = length(find(axis_tmp == 6));
+                    yn = length(find(axis_tmp == 7));
+                    xyn = 2^(xn + yn);
+                    axis_out_tmp = repmat(axis_tmp,xyn,1);
+                    axis_out_tmp(axis_out_tmp == 6) = 0;  
+                    axis_out_tmp(axis_out_tmp == 7) = 0;  
+                    coef_out_tmp = ones(xyn,1);
+            
+                    dec = 0:xyn - 1;
+                    bin_mat = de2bi(dec,(xn + yn),'left-msb');
+                    bin_mat (bin_mat == 0) = 0;
+                    bin_mat (bin_mat == 1) = 3;
+                    % Creation of the pattern
+                    % If xn + yn = 2, there are 2 terms with using z and E.
+                    % The all combinations are
+                    % 0 0 
+                    % 0 3
+                    % 3 0
+                    % 3 3
+
+                    int_count = 0;
+                    for jj = 1:spin_no
+                        axis_v = axis_tmp(jj);
+                        if axis_v == 6 || axis_v == 7
+                            int_count = int_count + 1;
+                            bin_vec = bin_mat(:,int_count);
+                            axis_out_tmp(:,jj) = bin_vec;
+
+                            c_tmp = ones(size(bin_vec));
+                            if axis_v == 6 % Ia = 1/2*E + Iz
+                                c_tmp(bin_vec == 0) = 1/2;% No Nceof with pmz basis, thus need to provide 1/2
+                                c_tmp(bin_vec == 3) = 1;
+                            elseif axis_v == 7 % Ib = 1/2*E + Iz
+                                c_tmp(bin_vec == 0) = 1/2;% No Nceof with pmz basis, thus need to provide 1/2
+                                c_tmp(bin_vec == 3) = -1;
+                            end
+                            coef_out_tmp = coef_out_tmp.*c_tmp;
+                        end
+                    end
+                end
+
+                % Combine terms
+                axis_out = [axis_out;axis_out_tmp];
+                coef_out_tmp = coef_out_tmp*coef_in(ii)*Ncoef_in(ii);% Ncoef => coef
+                coef_out = [coef_out;coef_out_tmp];
+            end % ii
+        
+            bracket_out = [];
+            for ii = 1:length(coef_out)
+                symcoef = coef_out(ii);
+                if contains(char(symcoef),'+')||contains(char(symcoef),'-')% 'a+b' or 'a-b'-type coefficients
+                    bracket_out = cat(1,bracket_out,1);
+                else
+                    bracket_out = cat(1,bracket_out,0);
+                end
+            end
+        
+            obj2 = obj;
+            obj2.axis = axis_out;
+            obj2.coef = coef_out;
+            obj2.bracket = bracket_out;
+            obj2.basis = 'pmz';
+            obj = CombPO(obj2);
+            obj.logs = char(obj2.logs,sprintf('%s',obj.txt));
         end
         % pol2pmz
 
@@ -1537,9 +1692,9 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             % using Ix*cos(G*Z*gH*t) - Iy*sin(G*Z*gH*t) + Sz + Kx*sin(G*Z*gC*t) + Ky*cos(G*Z*gC*t)
             %               Conversion of basis in the code (above line)
             % input basis   xyz pmz pol Non
-            %         xyz   1.3 1.6 6.7 1.4
-            %         pmz   1.9 1.2 8.3 1.3
-            %         pol   3.2 3.8 5.0 5.4
+            %         xyz   1.2 1.6 6.7 1.4
+            %         pmz   1.8 1.2 8.3 1.3
+            %         pol   3.2 2.9 5.0 4.9
 
             PFGq_in = obj.PFGq;
             syms Zpfg
@@ -1591,7 +1746,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                                                                    % exp( (n*Zpfg)/m)
                     cv1 = id_lp_vec(find(id_lp_vec > id_exp_tmp)); %  =>( ( 
                     cv2 = id_lp_vec(find(id_lp_vec <= id_lp_tmp)); %    ( (<=
-                    Lia = ismember(cv1,cv2)                        %    1 1, meaning there are two lps.
+                    Lia = ismember(cv1,cv2);                       %    1 1, meaning there are two lps.
                                                                    % exp( (n*Zpfg)/m) 
                     id_rp_vec = id_rp(find(id_rp > id_tmp));       %             )  )
                     id_rp_tmp = id_rp_vec(sum(Lia));               %                )<= additional rp to ajudst tolal two rps.
@@ -1602,7 +1757,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 end
                 PFG_mat = unique(PFG_mat);
                 
-                coef_out = sp;
+                coef_out = sb;
                 for jj = 1:length(PFG_mat)
                     coef_out = subs(coef_out,PFG_mat(jj),0);
                 end
