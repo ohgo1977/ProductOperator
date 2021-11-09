@@ -1,5 +1,5 @@
 % Exp140_gCOSY_PS.m
-
+% Berger, S.; Braun, S. 200 and More NMR Experiments A Practical Course, p. 526
 
 % Para begin %
 ph_cell{1} = [0 2];
