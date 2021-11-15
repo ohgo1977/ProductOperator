@@ -151,7 +151,11 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
         % get.Ncoef
         
         %% txt_out = get.txt(obj)
-        function txt_out = get.txt(obj)            
+        function txt_out = get.txt(obj)
+            % txt_out = get.txt(obj)
+            % Calculation of dependent Property txt.
+            % The calculation speed is slow.
+            % In the future version, the use of for loop should be avoided.
             if isempty(find(obj.coef ~= sym(0),1))% If all coef values are zero.
                 txt_out = '0';
             else
@@ -162,7 +166,6 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                     coef_tmp = obj.coef(ii);
                     bracket_tmp = obj.bracket(ii);
 
-                    % Text of Product Operator
                     pt = axis2pt(obj,axis_tmp);
                     
                     % Remove '1' from single-type P.O. (N = 1 for 2^(N-1))
@@ -384,7 +387,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             % Also detects coefficients in which parentheses should be added and puts a flag in obj.bracket.
         
             axis_in = obj.axis;
-            [~,IA,IC] = unique(axis_in,'rows');        
+            [~,IA,IC] = unique(axis_in,'rows');
             % Example
             % axis_in = [1 0 0; % Row 1
             %           0 2 3;  % Row 2
@@ -405,8 +408,8 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             coef_out = sym(zeros(length(IA),1));
             axis_out = zeros(length(IA),size(axis_in,2));
             bracket_out = zeros(length(IA),1);
-        
-            for ii = 1:length(IA)
+
+            for ii = 1:length(IA) % 7 ms / ii loop
                IA_tmp = IA(ii);
                IC_tmp = find(IC == IC(IA_tmp));% IMPORTANT!!
                 % IA_tmp is an ID of a unique row in axis_in.
@@ -424,38 +427,33 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
 
             A_dummy = sym('A_dummy');
             % Use "A" as a first charcter so that A_dummy comes before other alphabets.
-
-            dummy_p_mat = A_dummy*coef_out;
             char_A_dummy = char(A_dummy);
+            dummy_p_mat = A_dummy*coef_out;
+            char_dummy_p_mat = char(dummy_p_mat);
+            char_dummy_p_mat = [char_dummy_p_mat(1:end-1) ';]'];% Addition of ';]' at the end.
 
-            for ii = 1:length(coef_out)
-                coef_tmp = coef_out(ii);
-                dummy_p = dummy_p_mat(ii); % dummy_p = A_dummy*coef_tmp
-                char_dummy_p = char(dummy_p);
-                id_tmp = strfind(char_dummy_p,char(A_dummy)) + length(char_A_dummy) + 1;
-        
-                if coef_tmp == sym(0)% Special case: coef_tmp = sym(0)
-                    bracket_tmp = 0;
-                else
-                    if length(char_dummy_p) > id_tmp && strcmp(char_dummy_p(id_tmp),'(')
-                        % 1st condition is the case with coef_tmp = sym(1)
-                        % if dummy_p = -3*A_dummy*(...), 
-                        % then the charcter at id_tmp of char_dummy_p should be '('.
-                        bracket_tmp = 1;
-                    else
-                        bracket_tmp = 0;                   
-                    end
-                end
-                bracket_out(ii) = bracket_tmp;
+            sc_id = strfind(char_dummy_p_mat,';');% Postion of ';'
+            A_dummy_id = strfind(char_dummy_p_mat,char_A_dummy); % Postion of 'A_dummmy'
+            lp_pos = A_dummy_id + length(char_A_dummy) + 1;      % Postion of X of 'A_dummy*X'
+            lp_st = char_dummy_p_mat(lp_pos);                    % Character at lp_pos
+            lp_id = lp_pos(strfind(lp_st,'('));                  % id of ( of 'A_dummy*('
+
+            bracket_out_id = [];
+            for ii = 1:length(lp_id)
+                lp_id_tmp = lp_id(ii);
+                id_tmp = find(sc_id > lp_id_tmp);
+                bracket_out_id = cat(1,bracket_out_id,id_tmp(1));
             end
+            bracket_out(bracket_out_id) = 1;
 
             % Remove terms with 0 coefficients
-            if isempty(find(coef_out ~= sym(0),1)) % Only zero values in coef_out, then set as 0*1/2E. 
+            sym0 = sym(0);
+            if isempty(find(coef_out ~= sym0,1)) % Only zero values in coef_out, then set as 0*1/2E. 
                 id_vec = 1;
                 axis_out = zeros(1,size(axis_in,2));% Reset axis_out for 1/2E
                 bracket_out = 0;
             else
-                id_vec = find(coef_out ~= sym(0));
+                id_vec = find(coef_out ~= sym0);
             end
 
             % To use spin_label and display in the input obj,
@@ -952,7 +950,6 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
         end
         % pmz2pol
 
-
         % obj = pol2pmz(obj)
         function obj = pol2pmz(obj)
             % obj = pol2pmz(obj)
@@ -1136,8 +1133,6 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             % Thus, if H = Iz*Sz, internally it is considered as 2*Iz*Sz*1/2
 
             % Calculation of new density operator evolved under a Hamiltonian
-            axis_new = [];
-            coef_new = [];
             H_axis = H.axis;
 
             type_mask_mat = (obj.axis.*H_axis) ~= 0;% Check how many spin types get matched, matched: 1, unmatched: 0
@@ -1145,71 +1140,102 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             axis_mask_mat = type_mask_mat.*axis_diff_mat;
             axis_mask_vec = sum(axis_mask_mat,2);
 
-            for ii = 1:length(obj.coef)% For each term of obj
-                rho_axis = obj.axis(ii,:);
-                axis_mask = axis_mask_vec(ii);
+            axis_masK_vec2 = axis_mask_vec;
+            axis_masK_vec2(axis_masK_vec2 ~= 1) = 0; % Terms to be split to cos and sin: 1, otherwise: 0
+            axis_new_tmp = zeros(size(obj.axis,1) + sum(axis_masK_vec2),size(obj.axis,2));
+            coef_new_tmp = sym(zeros(size(obj.axis,1) + sum(axis_masK_vec2),1));
 
-                % type_mask_vec = (rho_axis.*H_axis) ~= 0;% Check how many spin types get matched, matched: 1, unmatched: 0
-                % axis_diff_vec = rho_axis ~= H_axis;% Check the difference of the direction of each spin type
-                % axis_mask_vec = type_mask_vec.*axis_diff_vec;
-                % axis_mask = sum(axis_mask_vec);
-
-                % The cases of axis_mask = 1 means
-                % there is at least one match of spin types between H and rho
-                % and
-                % only one spin-type has a difference of axis directions between H
-                % and rho.
-                % The evolution of rho under H should be considered with
-                % these conditions.
-                
-                axis_new = cat(1,axis_new,rho_axis);% Put original axis in new axis
-
-                if  axis_mask == 1
-                    axis_tmp = zeros(1,size(obj.axis,2));% This should be 0, i.e. Unit-operator.
-                    sign_tmp = 1;
-
-                    for jj = 1:length(rho_axis)
-                        H_axis_tmp = H_axis(jj);
-                        rho_axis_tmp = rho_axis(jj);
-
-                        % determination of sine term
-                        if H_axis_tmp ~= 0 && rho_axis_tmp ~= 0 % Use of Master Table                           
-                           mtv_tmp = mt(H_axis_tmp,rho_axis_tmp); 
-
-                        elseif H_axis_tmp ~= 0 && rho_axis_tmp == 0 % Ex. rho: Ix, H: 2IzSz => sine term: 2Iy(Sz)
-                           mtv_tmp = H_axis_tmp;                    % (Sz) corresonds to H_axis_tmp
-                               
-                        elseif H_axis_tmp == 0 && rho_axis_tmp ~= 0 % Ex. rho: 2IzSz, H: Ix => sine term: 2Iy(Sz)
-                           mtv_tmp = rho_axis_tmp;                  % (Sz) corresonds to rho_axis_tmp
-
-                        else
-                           mtv_tmp = 0; % No evolution. Does this case happen with axis_mask == 1?
-
-                        end
-
-                        if mtv_tmp ~= 0
-                            axis_tmp(jj) = abs(mtv_tmp);
-                            sign_tmp = sign_tmp*sign(mtv_tmp);
-                        end
-                    end
-                    
-                    % sign_tmp = sign_tmp*sign(H.coef);% Direction of the rotation by the sign of H
-
-                    if ~isempty(find(axis_tmp,1))% if axis_tmp is not [0 0 0]
-                        axis_new = cat(1,axis_new,axis_tmp);
-                        coef_new = cat(1,coef_new,obj.coef(ii)*[cos(q); sign_tmp*sin(q)]);
-                    end
-
-                else % axis_mask ~= 1, No evolution
-                    coef_new = cat(1,coef_new,obj.coef(ii));
+            % Put the position marker of sin-term after cos-term
+            axis_mask_vec3 = axis_masK_vec2;
+            id_tmp_vec = find(axis_mask_vec3 == 1);
+            for ii = length(id_tmp_vec):-1:1
+                id_tmp = id_tmp_vec(ii);
+                if id_tmp ~= length(axis_mask_vec3)
+                    axis_mask_vec3 = [axis_mask_vec3(1:id_tmp);2;axis_mask_vec3(id_tmp+1:end)];% 0: No-change, 1: cos term, 2: sin term
+                elseif id_tmp == length(axis_mask_vec3)
+                    axis_mask_vec3 = [axis_mask_vec3(1:id_tmp);2];
                 end
             end
+
+            % Non-sin terms
+            axis_new_tmp(axis_mask_vec3 ~=2,:) = obj.axis;
+            coef_new_tmp(axis_mask_vec3 ~=2) = obj.coef;
+            
+            % sin terms
+            coef_new_tmp(axis_mask_vec3 ==2) = coef_new_tmp(axis_mask_vec3 == 1);
+
+            % cos terms
+            axis_cos = axis_new_tmp(axis_mask_vec3 == 1,:);
+            coef_new_tmp(axis_mask_vec3 == 1) = coef_new_tmp(axis_mask_vec3 == 1)*cos(q);
+
+            H_axis_mat = repmat(H_axis,size(axis_cos,1),1);
+
+            mt_ver = 2;
+            if mt_ver == 1
+                mt_large = zeros(4,4);
+                mt_large(1:3,1:3) = mt;
+                mt_large(4,1:3) = 1:3;
+                mt_large(1:3,4) = [1:3]';
+                axis_cos4 = axis_cos;
+                H_axis_mat4 = H_axis_mat;
+                axis_cos4(axis_cos4 == 0) = 4;% 0 => 4
+                H_axis_mat4(H_axis_mat4 == 0) = 4;% 0 => 4
+
+                axis_sin = zeros(size(axis_cos));
+                for ii = 1:size(axis_sin,1)
+                    axis_sin_tmp = mt_large(H_axis_mat4(ii,:),axis_cos4(ii,:));
+                    axis_sin(ii,:) = diag(axis_sin_tmp)';
+                end
+
+            elseif mt_ver == 2
+                mt_large = zeros(4,4);
+                mt_large(1:3,1:3) = mt;
+                mt_large(4,1:3) = 1:3;
+                mt_large(1:3,4) = [1:3]';
+                axis_cos4 = axis_cos;
+                H_axis_mat4 = H_axis_mat;
+                axis_cos4(axis_cos4 == 0) = 4;% 0 => 4
+                H_axis_mat4(H_axis_mat4 == 0) = 4;% 0 => 4
+
+                axis_cos4 = reshape(axis_cos4',1,numel(axis_cos4));
+                H_axis_mat4 = reshape(H_axis_mat4',1,numel(H_axis_mat4));
+                axis_sin_tmp = mt_large(H_axis_mat4,axis_cos4);
+                axis_sin_tmp = diag(axis_sin_tmp);% Column vector
+                axis_sin = reshape(axis_sin_tmp',fliplr(size(axis_cos)));
+                axis_sin = axis_sin';
+
+            elseif mt_ver == 3
+                axis_sin = zeros(size(axis_cos));
+                for ii = 1:size(axis_cos,1)
+                    for jj = 1:size(axis_cos,2)
+                        if axis_cos(ii,jj) ~= 0 && H_axis_mat(ii,jj) ~= 0
+                            axis_sin(ii,jj) = mt(H_axis_mat(ii,jj),axis_cos(ii,jj));
+                        elseif axis_cos(ii,jj) == 0 && H_axis_mat(ii,jj) ~= 0
+                            axis_sin(ii,jj) = H_axis_mat(ii,jj);
+                        elseif axis_cos(ii,jj) ~= 0 && H_axis_mat(ii,jj) == 0
+                            axis_sin(ii,jj) = axis_cos(ii,jj);
+                        end
+                    end
+                end
+            end
+
+            axis_new_tmp(axis_mask_vec3 == 2,:) = axis_sin;            
+            axis_new_tmp = abs(axis_new_tmp);
+
+            if ~isempty(axis_sin)
+                axis_sin_sign = axis_sin;
+                axis_sin_sign(axis_sin_sign == 0) = 1;% Set the sign of 0 as 1
+                axis_sin_sign = prod(sign(axis_sin_sign),2);
+                coef_new_tmp(axis_mask_vec3 == 2) = coef_new_tmp(axis_mask_vec3 == 2).*axis_sin_sign*sin(q);
+            end
+
+            coef_new = coef_new_tmp;
+            axis_new = axis_new_tmp;
 
             obj.axis = axis_new;
             obj.coef = coef_new;
             obj.bracket = zeros(size(obj.coef));
             obj = CombPO(obj);
-
             obj = set_basis(obj,basis_org);
         end 
         % UrhoUinv_mt
@@ -1275,7 +1301,6 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             %     quadrature phase only.
             % q: flip angle in radian (symbolic or double)
 
-
             basis_org = obj.basis;
             s0 = obj.logs;
             obj = set_basis(obj,'xyz');
@@ -1318,7 +1343,6 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             H.bracket = 0;
 
             obj = UrhoUinv_mt(obj,H,q);
-
             obj = set_basis(obj,basis_org);
 
             if isa(q,'sym') == 1
@@ -1663,17 +1687,10 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             % delete terms affected by pfg().
             % This method was obitaned from POMA by Gunter (2006).
 
-            % et1_1 = tic;
             basis_org = obj.basis;
             s0 = obj.logs;
-            % fprintf(1,'et1_1:');
-            % toc(et1_1);
 
-            % et1_2 = tic;
             % obj = set_basis(obj,'pmz');
-            % fprintf(1,'et1_2:');
-            % toc(et1_2);
-
             % Checking execution time (s)
             % PO.create({'I' 'S' 'K'});
             % rho = pfg((Ix + Sz + Ky),3.5*G,{gH gH gC});
@@ -1684,37 +1701,28 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             %         pmz   1.2 0.5 2.6 0.4
             %         pol   2.7 2.1 1.2 0.9
 
-            % et2 = tic;
             PFGq_in = obj.PFGq;
             syms Zpfg
-            PFGq = [];
+            PFGq_out = [];
             for ii = 1:length(PFGq_in)
-                se = children(PFGq_in(ii));
                 try % including symbolic number in se, e.g., 3 in G*Z*gH*3. Then remove that number from se.
+                    se = children(PFGq_in(ii));
                     v_tmp = double(se{end});% This gets an error if se is G*Z*gH.
                     PFGq_tmp = prod([se{1:end-1}]);% Remove number
-                    PFGq = cat(2,PFGq,PFGq_tmp);
+                    PFGq_out = cat(2,PFGq_out,PFGq_tmp);
                 catch % not including symbolic number in se, e.g., G*Z*gH.
-                    PFGq = cat(2,PFGq,PFGq_in(ii));
+                    PFGq_out = cat(2,PFGq_out,PFGq_in(ii));
                 end
             end
-            PFGq = unique(PFGq);
-            % fprintf(1,'et2:');
-            % toc(et2);
+            PFGq_out = unique(PFGq_out);
 
-            % et3 = tic;
             coef_in = obj.coef;
             subs_in = expand(rewrite(coef_in,'exp'));
-            % fprintf(1,'et3:');
-            % toc(et3);
 
-            % et4 = tic;
-            for jj = 1:length(PFGq)
-                PFGq_tmp = PFGq(jj);
+            for jj = 1:length(PFGq_out)
+                PFGq_tmp = PFGq_out(jj);
                 subs_in = subs(subs_in,PFGq_tmp,-1i*Zpfg);% subs exp(-2*G*Z*gH*1i) => exp(-2*Zpfg)
             end
-            % fprintf(1,'et4:');
-            % toc(et4);
 
             % https://www.mathworks.com/matlabcentral/answers/455911-find-child-subexpressions-of-symbolic-expression
             % Unfortunately, it is very difficult to obtain the internal structure of a symbolic expression in MATLAB.
@@ -1722,28 +1730,15 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             % sp =  (exp(3.5*Zpfg)*exp(-o1*t1*1i)*exp(-pi*J12*t1*1i)*1i)/8 + (exp(2*Zpfg)*exp(-o1*t1*1i)*exp(pi*J12*t1*1i)*1i)/8;
             % In the code below, the terms exp(n*Zpfg) are extracted from the string corresponding to sb.
 
-            % et5_1 = tic;
             st = char(subs_in);
-            % fprintf(1,'et5_1:');
-            % toc(et5_1);
 
-            % et5_2 = tic;
             id_Zpfg = strfind(st,'Zpfg');
             id_lp = strfind(st,'(');
             id_rp = strfind(st,')');
             id_exp = strfind(st,'exp');
-            % fprintf(1,'et5_2:');
-            % toc(et5_2);
-
-            % et5_3 = tic;
-            % disp(length(id_Zpfg));
 
             PFG_mat = [];
-            int_count = 0;
             while length(id_Zpfg) > 0
-
-                % int_count = int_count + 1;
-                % fprintf('int_count:%d\n',int_count);
                 id_tmp = id_Zpfg(1); % Position of Zpfg
                                                                 
                 id_lp_vec = id_lp(id_lp < id_tmp);    % Positions of ( on the left side of Zpfg
@@ -1751,7 +1746,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                             
                 id_exp_vec = id_exp(id_exp < id_tmp); % Positions of exp on the left side of Zpfg
                 id_exp_tmp = id_exp_vec(end);         % Position of the closest exp on the left side of Zpfg
-                                                            % exp( (n*Zpfg)/m)
+                                                         % exp( (n*Zpfg)/m)
                 cv1 = id_lp_vec(id_lp_vec > id_exp_tmp); %  =>( ( 
                 cv2 = id_lp_vec(id_lp_vec <= id_lp_tmp); %    ( (<=
                 Lia = ismember(cv1,cv2);                 %    1 1, meaning there are two lps.
@@ -1760,15 +1755,15 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 id_rp_tmp = id_rp_vec(sum(Lia));         %                )<= additional rp to ajudst tolal two rps.
 
                 st_tmp = st(id_exp_tmp : id_rp_tmp);
-                PFG_mat = cat(2,PFG_mat,str2sym(st_tmp)); % Conversion from char to sym. 0.03 s
+                PFG_mat = cat(2,PFG_mat,str2sym(st_tmp)); % Conversion from char to sym.
                 
-                id_st_tmp = strfind(st,st_tmp);
-
+                % Delete exp((n*Zpfg)/m) (st_tmp) from st to reduce the number of the loop. This step is critical.
+                id_st_tmp = strfind(st,st_tmp); % id_st_tmp = [m n...];
                 id_tmp = id_st_tmp;
                 for kk = 1:length(st_tmp)-1
                     id_tmp = cat(2,id_tmp,id_st_tmp + kk);
                 end
-                id_tmp = sort(id_tmp);
+                id_tmp = sort(id_tmp);% id_st_tmp = [m m+1 m+2 ... m+length(st_tmp)-1 n n+1 n+2 ... n+length(st_tmp)-1 ...];
                 st(id_tmp) = '';
                 id_Zpfg = strfind(st,'Zpfg');
                 id_lp = strfind(st,'(');
@@ -1778,34 +1773,18 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
 
             PFG_mat = unique(PFG_mat);
             % disp(PFG_mat);
-            % fprintf(1,'et5_3:');
-            % toc(et5_3);
 
-            % et6 = tic;
             coef_out = subs_in;
             for jj = 1:length(PFG_mat)
                 coef_out = subs(coef_out,PFG_mat(jj),0);
             end
-            % fprintf(1,'et6:');
-            % toc(et6);
 
-            % et7 = tic;
             obj.coef = rewrite(coef_out,'sincos');
-            % fprintf(1,'et7:');
-            % toc(et7);
 
-            % et8_1 = tic;
             obj = CombPO(obj);
-            % fprintf(1,'et8_1:');
-            % toc(et8_1);
-
-            % et8_2 = tic;
             % obj = set_basis(obj,basis_org);% 0.1 s
-            % fprintf(1,'et8_2:');
-            % toc(et8_2);
 
-            % et9 = tic;
-            s_out = sprintf('Dephasing of terms including %s',char(PFGq));
+            s_out = sprintf('Dephasing of terms including %s',char(PFGq_out));
             s1 = sprintf('%s',s_out);
             s2 = sprintf('    %s',obj.txt);
             obj.logs = char(s0,s1,s2); 
@@ -1813,8 +1792,6 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 fprintf(1,'%s\n',s1);
                 fprintf(1,'%s\n',s2);
             end
-            % fprintf(1,'et9:');
-            % toc(et9);
         end
         % dephase
 
@@ -1976,25 +1953,25 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
         end 
         % SigAmp
        
-       %% pt = axis2pt(obj,axis_tmp)
-       function pt = axis2pt(obj,axis_tmp)
-           % pt = axis2pt(obj,axis_tmp)
-           % axis_tmp is a row vector from rho.axis.
-           % obj is necessary to get spin_label from it.
-           %
-           % Example:
-           % axis_tmp = [1 1], pt = 'IxSx'. Note that pt doesn't include '2' for '2IxSx'.
+        %% pt = axis2pt(obj,axis_tmp)
+        function pt = axis2pt(obj,axis_tmp)
+            % pt = axis2pt(obj,axis_tmp)
+            % axis_tmp is a row vector from rho.axis.
+            % obj is necessary to get spin_label from it.
+            %
+            % Example:
+            % axis_tmp = [1 1], pt = 'IxSx'. Note that pt doesn't include '2' for '2IxSx'.
             pt = '';
             if isempty(find(axis_tmp, 1))% axis_tmp = [0 0 ... 0]
                 pt = 'E';
             else
-                jj_int = 0;% with *
+                jj_int = 0;
                 for jj = 1:length(axis_tmp)
                     axis_v = axis_tmp(jj);
                     st = obj.spin_label{jj};
 
                     if axis_v ~=0
-                        jj_int = jj_int + 1;% with *
+                        jj_int = jj_int + 1;% Counter to determine at where the 1st * should be put.
                         if axis_v == 1
                             at = 'x';  
                         elseif axis_v == 2
@@ -2013,9 +1990,10 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
 
                         if obj.asterisk_bin == 1
                             if jj_int == 1                
-                                pt = strcat(pt,st,at);
+                                pt = strcat(pt,st,at);% No need to put * before the 1st operator.
+                                                    % Example: [0 3 2] in ISK => Sz*Ky not *Sz*Ky
                             else
-                                pt = strcat(pt,'*',st,at);% with *
+                                pt = strcat(pt,'*',st,at);
                             end
                         elseif obj.asterisk_bin == 0
                             pt = strcat(pt,st,at);
@@ -2023,11 +2001,70 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                     end
                 end
             end
-       end 
-       % axis2pt
+        end 
+        % axis2pt
 
-       %% obj = delPO(obj,id_in)
-       function obj = delPO(obj,id_in)
+        %% char_tmp2 = axis2pt2(obj)
+        function char_tmp2 = axis2pt2(obj)
+        % char_tmp2 = axis2pt2(obj)
+        % axis_tmp is a row vector from rho.axis.
+        % obj is necessary to get spin_label from it.
+        %
+        % Example:
+        % axis_tmp = [1 1], pt = 'IxSx'. Note that pt doesn't include '2' for '2IxSx'.
+            axis_tmp = obj.axis;
+            spin_label_cell = obj.spin_label;
+
+            axis_tmp1 = axis_tmp;
+            axis_tmp1(axis_tmp1 ~= 0) = 1;
+            axis_tmp1_sum = sum(axis_tmp1,2);
+            disp(axis_tmp1_sum);
+
+            axis_tmp2 = axis_tmp;
+            axis_tmp2(axis_tmp2 == 1) = 120; % x
+            axis_tmp2(axis_tmp2 == 2) = 121; % y
+            axis_tmp2(axis_tmp2 == 3) = 121; % z
+            axis_tmp2(axis_tmp2 == 4) = 112; % p
+            axis_tmp2(axis_tmp2 == 5) = 109; % m
+            axis_tmp2(axis_tmp2 == 6) = 97;  % a
+            axis_tmp2(axis_tmp2 == 7) = 98;  % b
+
+            % axis_tmp3 = zeros(size(axis_tmp2,1),3*size(axis_tmp2,2) - 1);
+            axis_tmp3 = [];
+            for ii = 1:size(axis_tmp2,2)
+                st = spin_label_cell{ii};
+                axis_tmp31 = repmat(double(st),size(axis_tmp2,1),1).*repmat((axis_tmp2(:,ii) ~= 0),1,length(double(st)));
+                axis_tmp32 = axis_tmp2(:,ii);
+
+                if ii < size(axis_tmp,2)
+                    % axis_tmp33 = (axis_tmp2(:,ii) ~= 0).*(axis_tmp2(:,ii + 1) ~= 0)*42;
+                    axis_tmp33 = ones(size(axis_tmp2,1),1)*42;
+                    axis_tmp3 = cat(2,axis_tmp3,[axis_tmp31 axis_tmp32 axis_tmp33]);
+                else
+                    axis_tmp3 = cat(2,axis_tmp3,[axis_tmp31 axis_tmp32]);                
+                end
+            end
+
+            axis_tmp3 = cat(2,axis_tmp3,ones(size(axis_tmp,1),1)*59);
+            axis_tmp3(axis_tmp3 == 0) = 32; % Space
+
+            char_tmp = char(axis_tmp3);
+            char_vec = reshape(char_tmp',1,numel(char_tmp));
+            char_vec([strfind(char_vec,'* ') strfind(char_vec,'* ') + 1]) = ' ';
+            char_vec([strfind(char_vec,' * ') strfind(char_vec,' * ') + 1 strfind(char_vec,' * ') + 2]) = ' ';
+
+            char_tmp2 = reshape(char_vec',size(char_tmp,2),size(char_tmp,1))';
+            char_tmp2 = char_tmp2(:,1:end-1);
+
+            %     if obj.asterisk_bin == 1
+            %     elseif obj.asterisk_bin == 0
+            %     end
+        end 
+        % axis2pt2
+     
+
+        %% obj = delPO(obj,id_in)
+        function obj = delPO(obj,id_in)
         % obj = delPO(obj,id_in)
         % rho = delPO(rho,[1 2])
         % rho = delPO(rho,{'Ix'})
@@ -2048,8 +2085,8 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
         end 
         % delPO
 
-       %% obj = selPO(obj,id_in)
-       function obj = selPO(obj,id_in)
+        %% obj = selPO(obj,id_in)
+        function obj = selPO(obj,id_in)
         % obj = selPO(obj,id_in)
         %
         % rho = selPO(rho,[1 2])
@@ -3083,8 +3120,8 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                     try
                         eval(ps_lines(jj,:));
                     catch ME
-                        error_message = sprintf('PS Line %d, %s',jj,ME.message);
-                        error(error_message);
+                        % error_message = sprintf('PS Line %d, %s',jj,ME.message);
+                        error('PS Line %d, %s',jj,ME.message);
                     end
                 end
 

@@ -35,8 +35,8 @@ for ii = phid
     rho_detect = receiver(rho,phR);
     rho_total = rho_detect + rho_total;
 
-    [a0_V, rho_V] = rho.SigAmp({'I*'},phR); % Detection
-    a0_M = cat(1,a0_M,a0_V);
-    rho_M = cat(1,rho_M,rho_V);
+    % [a0_V, rho_V] = rho.SigAmp({'I*'},phR); % Detection
+    % a0_M = cat(1,a0_M,a0_V);
+    % rho_M = cat(1,rho_M,rho_V);
 end
 rho_final = observable(rho_total,{'I*'});
