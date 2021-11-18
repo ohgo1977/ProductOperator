@@ -58,7 +58,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
     %%
     properties (Access = protected) 
         % No access from the Command Window. Each PO object has its own value.
-        bracket % Binary value to indicate cases with (a+b) or (a-b) type coefficient (1: yes, 0: no)
+        % bracket % Binary value to indicate cases with (a+b) or (a-b) type coefficient (1: yes, 0: no)
 
         SimplifySteps = 10
                 % Number of steps used for simplify() in CombPO().
@@ -94,6 +94,8 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
     properties % No access limit
         disp = 1    % Control the display of the applied method on the monitor.
                     % 1: On, 2: Off
+
+        bracket % Binary value to indicate cases with (a+b) or (a-b) type coefficient (1: yes, 0: no)
     end
     
     % Custom Display of properties
@@ -154,70 +156,104 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
         function txt_out = get.txt(obj)
             % txt_out = get.txt(obj)
             % Calculation of dependent Property txt.
-            % The calculation speed is slow.
-            % In the future version, the use of for loop should be avoided.
             if isempty(find(obj.coef ~= sym(0),1))% If all coef values are zero.
                 txt_out = '0';
             else
+
+                syms A_dummy
                 txt_out = '';
+                char_pcoef_in = char(obj.coef);
+                char_pcoef_in_cell = cell(length(obj.coef),1);
+                char_mcoef_in = char(-1*obj.coef);
+                char_mcoef_in_cell = cell(length(obj.coef),1);
+                char_dummy_in = char(A_dummy*obj.coef);
+                char_dummy_in_cell = cell(length(obj.coef),1);
+                char_Ncoef_in = char(obj.Ncoef);
+                char_Ncoef_in_cell = cell(length(obj.coef),1);
+
+                if length(obj.coef) == 1
+                    char_pcoef_in = ['; ' char_pcoef_in ';'];% Add ';' at the begining and end.
+                    char_mcoef_in = ['; ' char_mcoef_in ';'];
+                    char_dummy_in = ['; ' char_dummy_in ';'];
+                    char_Ncoef_in = ['; ' char_Ncoef_in ';'];
+                else
+                    char_pcoef_in = ['; ' char_pcoef_in(2:end-1) ';'];% Remove '[' and ']' and Add ';' at the begining and end.
+                    char_mcoef_in = ['; ' char_mcoef_in(2:end-1) ';'];
+                    char_dummy_in = ['; ' char_dummy_in(2:end-1) ';'];
+                    char_Ncoef_in = ['; ' char_Ncoef_in(2:end-1) ';'];
+                end
+
+                char_pcoef_in_id_tmp = strfind(char_pcoef_in,';');
+                char_mcoef_in_id_tmp = strfind(char_mcoef_in,';');
+                char_dummy_in_id_tmp = strfind(char_dummy_in,';');
+                char_Ncoef_in_id_tmp = strfind(char_Ncoef_in,';');
+
+                for ii = 1:length(obj.coef)
+                    char_pcoef_in_cell{ii,1} = char_pcoef_in(char_pcoef_in_id_tmp(ii) + 2:char_pcoef_in_id_tmp(ii + 1) - 1);
+                    char_mcoef_in_cell{ii,1} = char_mcoef_in(char_mcoef_in_id_tmp(ii) + 2:char_mcoef_in_id_tmp(ii + 1) - 1);
+                    char_dummy_in_cell{ii,1} = char_dummy_in(char_dummy_in_id_tmp(ii) + 2:char_dummy_in_id_tmp(ii + 1) - 1);
+                    char_Ncoef_in_cell{ii,1} = char_Ncoef_in(char_Ncoef_in_id_tmp(ii) + 2:char_Ncoef_in_id_tmp(ii + 1) - 1);
+                end
+
                 for ii = 1:length(obj.coef)
                     axis_tmp = obj.axis(ii,:);
-                    Ncoef_tmp = obj.Ncoef(ii);
-                    coef_tmp = obj.coef(ii);
+                    pcoef_tmp = char_pcoef_in_cell{ii};
+                    mcoef_tmp = char_mcoef_in_cell{ii};
+                    dummy_tmp = char_dummy_in_cell{ii};
+                    Ncoef_tmp = char_Ncoef_in_cell{ii};
                     bracket_tmp = obj.bracket(ii);
 
                     pt = axis2pt(obj,axis_tmp);
                     
                     % Remove '1' from single-type P.O. (N = 1 for 2^(N-1))
-                    if ~strcmp(char(Ncoef_tmp),'1')
+                    if ~strcmp(Ncoef_tmp,'1')
                         if obj.asterisk_bin == 0
-                            ptc = strcat(char(Ncoef_tmp),pt);
+                            ptc = strcat(Ncoef_tmp,pt);
                         elseif obj.asterisk_bin == 1
-                            ptc = strcat(char(Ncoef_tmp),'*',pt);% with *
+                            ptc = strcat(Ncoef_tmp,'*',pt);% with *
                         end
                     else
                         ptc = pt;
                     end
 
-                    % Adjustment of sign and Creation of txt
-                    subexpr = children(coef_tmp);
-                    if sign(subexpr{end}) == -1 || sign(coef_tmp) == -1 || sign(subexpr{end}) == -1i || ... 
-                    (length(subexpr) == 2 && sign(subexpr{1}) == -1 && sign(subexpr{2}) == 1i)
-                        % Case of negative values: change the position of '-'.
-                        % 1st condition: Symbols with negative sign such as -q, -1/2*q, etc..
-                        % 2nd condition: symbolic negative values such as sym(-2).
-                        % 3rd condition: symbols with negative imaginary such as -a*1i
-                        % 4th condition: symbolic negative imaginary valuess such as -5*1i
-                        if ~strcmp(char(coef_tmp),'-1')% if coef_tmp = sym(-1), it is not required to display -1 as a coeffcieint.
+                    dummy_id = strfind(dummy_tmp,'A_dummy'); % Position of 'A_dummy'
+                    minus_id = strfind(dummy_tmp,'-');       % Position of '-''
+
+                    tf_v = 0; % 0: Positive Sign
+                    if ~isempty(minus_id) && minus_id(1) < dummy_id % if '-' is on the lef of 'A_dummy'
+                        tf_v = 1;% 1: Negative Sign
+                    end
+
+                    if tf_v
+                        if ~strcmp(pcoef_tmp,'-1')% if coef = sym(-1), it is not required to display 1 as a coeffcieint.
                             if bracket_tmp == 1
-                                ptc = strcat(ptc,'*','(',char(-1*coef_tmp),')');% Add bracket for 'a-b'-type coefficient
+                                ptc = strcat(ptc,'*','(',mcoef_tmp,')');% Add bracket for 'a - b'-type coefficient
                             else
-                                ptc = strcat(ptc,'*',char(-1*coef_tmp));
+                                ptc = strcat(ptc,'*',mcoef_tmp);
                             end
                         end
                         txt_out = [txt_out,' ','-',' ',ptc];% Add Negative sign in the text
 
                     else % Symbols with positive sign such as q in addtion to symbolic positive numbers.
-                        if ~strcmp(char(coef_tmp),'1')% if coef_tmp = sym(1), it is not required to display 1 as a coeffcieint.
+                        if ~strcmp(pcoef_tmp,'1')% if coef = sym(1), it is not required to display 1 as a coeffcieint.
                             if bracket_tmp == 1
-                                ptc = strcat(ptc,'*','(',char(coef_tmp),')');% Add bracket for 'a+b'-type coefficient
+                                ptc = strcat(ptc,'*','(',pcoef_tmp,')');% Add bracket for 'a + b'-type coefficient
                             else
-                                ptc = strcat(ptc,'*',char(coef_tmp));
+                                ptc = strcat(ptc,'*',pcoef_tmp);
                             end            
                         end
 
-                        if ~strcmp(char(coef_tmp),'0')% if coef_tmp ~= sym(0)
+                        if ~strcmp(pcoef_tmp,'0')% if coef ~= sym(0)
                             if ii == 1% In the case of 1st term, no need to add '+'.
                                 txt_out = [txt_out,ptc];% No Positive sign for 1st term
                             else
                                 txt_out = [txt_out,' ','+',' ',ptc];
                             end
                         end
-
                     end
                 end
             end
-        end  
+        end 
         % get.txt
 
         %% M_out = get.M(obj)
@@ -1729,6 +1765,8 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             % As a result, it is not easy to manupulate particular terms including Zpfg, i.e., exp(n*Zpfg) in, for example,
             % sp =  (exp(3.5*Zpfg)*exp(-o1*t1*1i)*exp(-pi*J12*t1*1i)*1i)/8 + (exp(2*Zpfg)*exp(-o1*t1*1i)*exp(pi*J12*t1*1i)*1i)/8;
             % In the code below, the terms exp(n*Zpfg) are extracted from the string corresponding to sb.
+
+            % In the future version, use of regexp should be considered.
 
             st = char(subs_in);
 
