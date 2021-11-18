@@ -1810,7 +1810,6 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             end
 
             PFG_mat = unique(PFG_mat);
-            % disp(PFG_mat);
 
             coef_out = subs_in;
             for jj = 1:length(PFG_mat)
@@ -2040,66 +2039,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 end
             end
         end 
-        % axis2pt
-
-        %% char_tmp2 = axis2pt2(obj)
-        function char_tmp2 = axis2pt2(obj)
-        % char_tmp2 = axis2pt2(obj)
-        % axis_tmp is a row vector from rho.axis.
-        % obj is necessary to get spin_label from it.
-        %
-        % Example:
-        % axis_tmp = [1 1], pt = 'IxSx'. Note that pt doesn't include '2' for '2IxSx'.
-            axis_tmp = obj.axis;
-            spin_label_cell = obj.spin_label;
-
-            axis_tmp1 = axis_tmp;
-            axis_tmp1(axis_tmp1 ~= 0) = 1;
-            axis_tmp1_sum = sum(axis_tmp1,2);
-            disp(axis_tmp1_sum);
-
-            axis_tmp2 = axis_tmp;
-            axis_tmp2(axis_tmp2 == 1) = 120; % x
-            axis_tmp2(axis_tmp2 == 2) = 121; % y
-            axis_tmp2(axis_tmp2 == 3) = 121; % z
-            axis_tmp2(axis_tmp2 == 4) = 112; % p
-            axis_tmp2(axis_tmp2 == 5) = 109; % m
-            axis_tmp2(axis_tmp2 == 6) = 97;  % a
-            axis_tmp2(axis_tmp2 == 7) = 98;  % b
-
-            % axis_tmp3 = zeros(size(axis_tmp2,1),3*size(axis_tmp2,2) - 1);
-            axis_tmp3 = [];
-            for ii = 1:size(axis_tmp2,2)
-                st = spin_label_cell{ii};
-                axis_tmp31 = repmat(double(st),size(axis_tmp2,1),1).*repmat((axis_tmp2(:,ii) ~= 0),1,length(double(st)));
-                axis_tmp32 = axis_tmp2(:,ii);
-
-                if ii < size(axis_tmp,2)
-                    % axis_tmp33 = (axis_tmp2(:,ii) ~= 0).*(axis_tmp2(:,ii + 1) ~= 0)*42;
-                    axis_tmp33 = ones(size(axis_tmp2,1),1)*42;
-                    axis_tmp3 = cat(2,axis_tmp3,[axis_tmp31 axis_tmp32 axis_tmp33]);
-                else
-                    axis_tmp3 = cat(2,axis_tmp3,[axis_tmp31 axis_tmp32]);                
-                end
-            end
-
-            axis_tmp3 = cat(2,axis_tmp3,ones(size(axis_tmp,1),1)*59);
-            axis_tmp3(axis_tmp3 == 0) = 32; % Space
-
-            char_tmp = char(axis_tmp3);
-            char_vec = reshape(char_tmp',1,numel(char_tmp));
-            char_vec([strfind(char_vec,'* ') strfind(char_vec,'* ') + 1]) = ' ';
-            char_vec([strfind(char_vec,' * ') strfind(char_vec,' * ') + 1 strfind(char_vec,' * ') + 2]) = ' ';
-
-            char_tmp2 = reshape(char_vec',size(char_tmp,2),size(char_tmp,1))';
-            char_tmp2 = char_tmp2(:,1:end-1);
-
-            %     if obj.asterisk_bin == 1
-            %     elseif obj.asterisk_bin == 0
-            %     end
-        end 
-        % axis2pt2
-     
+        % axis2pt     
 
         %% obj = delPO(obj,id_in)
         function obj = delPO(obj,id_in)
@@ -2237,18 +2177,18 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
         end 
         % commutator
 
-       %% dispProp(obj, PropertyName)
-       function dispProp(obj, PropertyName)
-        % dispProp(obj, PropertyName)
-        % Display a property PropertyName in obj.
-        % PropertyName is a string.
-        % This function is useful to check a protected property.
-        % There may be a MATLAB-native method to check a protected property.
+        %% dispProp(obj, PropertyName)
+        function dispProp(obj, PropertyName)
+            % dispProp(obj, PropertyName)
+            % Display a property PropertyName in obj.
+            % PropertyName is a string.
+            % This function is useful to check a protected property.
+            % There may be a MATLAB-native method to check a protected property.
 
-            prop_out = eval(['obj.',PropertyName]);
-            disp(prop_out)
-       end
-       % dispProp
+                prop_out = eval(['obj.',PropertyName]);
+                disp(prop_out)
+        end
+        % dispProp
 
         %% obj = set_SimplifySteps(obj,new_v)
         function obj = set_SimplifySteps(obj,new_v)
@@ -2468,6 +2408,11 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 comp_V = sum(comp_M,2);
                 % if a value of comp_V is larger than 0, 
                 % it is necessary to consider the case of IxIy, SySz,... etc.
+                % axis1M         axis2M         axis1M.*axis2M             comp_V axis1M + axis2M
+                % [a1 a2 a3]     [c1 c2 c3]     [1 0 0].*[0 2 0] = [0 0 0]    0   [1 0 0] + [0 2 0] = [1 2 0]
+                % [b1 b2 b3]     [c1 c2 c3]      
+                % [a1 a2 a3]     [d1 d2 d3]     [3 3 0].*[1 0 0] = [3 0 0]   ~0   [3 3 0] + [1 0 0] = [4 3 0]  
+                % [b1 b2 b3]     [d1 d2 d3]
 
                 % Multiplication (*) in the spin-operator system is equivalent to
                 %       Addition (+) in the axis representation in this code
