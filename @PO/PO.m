@@ -58,7 +58,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
     %%
     properties (Access = protected) 
         % No access from the Command Window. Each PO object has its own value.
-        % bracket % Binary value to indicate cases with (a+b) or (a-b) type coefficient (1: yes, 0: no)
+        bracket % Binary value to indicate cases with (a+b) or (a-b) type coefficient (1: yes, 0: no)
 
         SimplifySteps = 10
                 % Number of steps used for simplify() in CombPO().
@@ -94,8 +94,6 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
     properties % No access limit
         disp = 1    % Control the display of the applied method on the monitor.
                     % 1: On, 2: Off
-
-        bracket % Binary value to indicate cases with (a+b) or (a-b) type coefficient (1: yes, 0: no)
     end
     
     % Custom Display of properties
