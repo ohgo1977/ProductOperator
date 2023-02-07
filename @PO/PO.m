@@ -4,7 +4,7 @@
 % Requirement : MATLAB Symbolic Math Toolbox
 % Developer   : Dr. Kosuke Ohgo
 % ULR         : https://github.com/ohgo1977/ProductOperator
-% Version     : 1.0.0
+% Version     : 1.0.1
 %
 % Please read the manual (PO_Manual.pdf) for details.
 %
@@ -31,6 +31,15 @@
 % LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 % OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 % SOFTWARE.
+%
+%
+% Revision Information
+% Version 1.0.1
+% February 6, 2023
+% - MATLAB-Version dependence found in txt_out = get.txt(obj) and obj = CombPO(obj) was fixed.
+%   Breifly, the output of char(sym_array) shows version dependence.
+%   To solve that, arrayfun(@char, sym_array, 'uniform', 0) was introduced.
+%
 
 %%
 classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
@@ -160,38 +169,13 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
 
                 syms A_dummy
                 txt_out = '';
-                char_pcoef_in = char(obj.coef);
-                char_pcoef_in_cell = cell(length(obj.coef),1);
-                char_mcoef_in = char(-1*obj.coef);
-                char_mcoef_in_cell = cell(length(obj.coef),1);
-                char_dummy_in = char(A_dummy*obj.coef);
-                char_dummy_in_cell = cell(length(obj.coef),1);
-                char_Ncoef_in = char(obj.Ncoef);
-                char_Ncoef_in_cell = cell(length(obj.coef),1);
 
-                if length(obj.coef) == 1
-                    char_pcoef_in = ['; ' char_pcoef_in ';'];% Add ';' at the begining and end.
-                    char_mcoef_in = ['; ' char_mcoef_in ';'];
-                    char_dummy_in = ['; ' char_dummy_in ';'];
-                    char_Ncoef_in = ['; ' char_Ncoef_in ';'];
-                else
-                    char_pcoef_in = ['; ' char_pcoef_in(2:end-1) ';'];% Remove '[' and ']' and Add ';' at the begining and end.
-                    char_mcoef_in = ['; ' char_mcoef_in(2:end-1) ';'];
-                    char_dummy_in = ['; ' char_dummy_in(2:end-1) ';'];
-                    char_Ncoef_in = ['; ' char_Ncoef_in(2:end-1) ';'];
-                end
-
-                char_pcoef_in_id_tmp = strfind(char_pcoef_in,';');
-                char_mcoef_in_id_tmp = strfind(char_mcoef_in,';');
-                char_dummy_in_id_tmp = strfind(char_dummy_in,';');
-                char_Ncoef_in_id_tmp = strfind(char_Ncoef_in,';');
-
-                for ii = 1:length(obj.coef)
-                    char_pcoef_in_cell{ii,1} = char_pcoef_in(char_pcoef_in_id_tmp(ii) + 2:char_pcoef_in_id_tmp(ii + 1) - 1);
-                    char_mcoef_in_cell{ii,1} = char_mcoef_in(char_mcoef_in_id_tmp(ii) + 2:char_mcoef_in_id_tmp(ii + 1) - 1);
-                    char_dummy_in_cell{ii,1} = char_dummy_in(char_dummy_in_id_tmp(ii) + 2:char_dummy_in_id_tmp(ii + 1) - 1);
-                    char_Ncoef_in_cell{ii,1} = char_Ncoef_in(char_Ncoef_in_id_tmp(ii) + 2:char_Ncoef_in_id_tmp(ii + 1) - 1);
-                end
+                % Revised on 2/3/2023
+                % https://www.mathworks.com/matlabcentral/answers/349936-how-to-convert-a-sym-array-into-a-string-array
+                char_pcoef_in_cell = arrayfun(@char, obj.coef, 'uniform', 0);
+                char_mcoef_in_cell = arrayfun(@char, -1*obj.coef, 'uniform', 0);
+                char_dummy_in_cell = arrayfun(@char, A_dummy*obj.coef, 'uniform', 0);
+                char_Ncoef_in_cell = arrayfun(@char, obj.Ncoef, 'uniform', 0);
 
                 for ii = 1:length(obj.coef)
                     axis_tmp = obj.axis(ii,:);
