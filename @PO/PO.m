@@ -4,7 +4,7 @@
 % Requirement : MATLAB Symbolic Math Toolbox
 % Developer   : Dr. Kosuke Ohgo
 % ULR         : https://github.com/ohgo1977/ProductOperator
-% Version     : 1.0.1
+% Version     : 1.0.2
 %
 % Please read the manual (PO_Manual.pdf) for details.
 %
@@ -34,12 +34,17 @@
 %
 %
 % Revision Information
-% Version 1.0.1
-% February 6, 2023
-% - MATLAB-Version dependence found in txt_out = get.txt(obj) and obj = CombPO(obj) was fixed.
+% Version 1.0.2
+% February 20, 2023
+% - MATLAB-Version dependence found in obj = CombPO(obj) was fixed.
 %   Breifly, the output of char(sym_array) shows version dependence.
 %   To solve that, arrayfun(@char, sym_array, 'uniform', 0) was introduced.
 %
+% Version 1.0.1
+% February 6, 2023
+% - MATLAB-Version dependence found in txt_out = get.txt(obj) was fixed.
+%   Breifly, the output of char(sym_array) shows version dependence.
+%   To solve that, arrayfun(@char, sym_array, 'uniform', 0) was introduced.
 
 %%
 classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
@@ -447,10 +452,21 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             % Use "A" as a first charcter so that A_dummy comes before other alphabets.
             char_A_dummy = char(A_dummy);
             dummy_p_mat = A_dummy*coef_out;
-            char_dummy_p_mat = char(dummy_p_mat);
-            char_dummy_p_mat = [char_dummy_p_mat(1:end-1) ';]'];% Addition of ';]' at the end.
 
-            sc_id = strfind(char_dummy_p_mat,';');% Postion of ';'
+            % Revised on 2/20/2023
+            % Creation of texts with '[a; b; c; d;]' format
+            char_dummy_p_cell = arrayfun(@char, dummy_p_mat, 'uniform', 0);
+            char_dummy_p_mat = '[';
+            for ii = 1:length(char_dummy_p_cell)
+                if ii == 1
+                    char_dummy_p_mat = [char_dummy_p_mat char_dummy_p_cell{ii} ';'];
+                else
+                    char_dummy_p_mat = [char_dummy_p_mat ' ' char_dummy_p_cell{ii} ';'];
+                end
+            end
+            char_dummy_p_mat = [char_dummy_p_mat ']'];
+
+            sc_id = strfind(char_dummy_p_mat,';'); % Postion of ';'
             A_dummy_id = strfind(char_dummy_p_mat,char_A_dummy); % Postion of 'A_dummmy'
             lp_pos = A_dummy_id + length(char_A_dummy) + 1;      % Postion of X of 'A_dummy*X'
             lp_st = char_dummy_p_mat(lp_pos);                    % Character at lp_pos
