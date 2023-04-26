@@ -3121,7 +3121,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                     end
 
                     if nargout == 6
-                        rho_M = cat(1,rho_M,rho_V)
+                        rho_M = cat(1,rho_M,rho_V);
                     end
                 end
             end
