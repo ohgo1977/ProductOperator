@@ -35,10 +35,12 @@
 %
 % Revision Information
 % Version 1.0.3
-% April 27, 2023
+% April 28, 2023
 % - Misdefining of I^0 in obj = mpower(obj1, obj2) was fixed.
 %   The old version returned 0 as a result of I^0.
 %   The current version returns 1/2E*2.
+%
+% -  An output argument a0_M from run_PS() was not created when the number of the output arguments were 6.
 %
 % Version 1.0.2
 % February 20, 2023
@@ -3121,7 +3123,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
 
                 if nargout > 4
                     [a0_V, rho_V] = rho.SigAmp(obs_cell,phR);
-                    if nargout == 5
+                    if nargout >= 5
                         a0_M = cat(1,a0_M,a0_V);
                     end
 
