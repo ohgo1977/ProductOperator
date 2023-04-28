@@ -34,6 +34,12 @@
 %
 %
 % Revision Information
+% Version 1.0.3
+% April 27, 2023
+% - Misdefining of I^0 in obj = mpower(obj1, obj2) was fixed.
+%   The old version returned 0 as a result of I^0.
+%   The current version returns 1/2E.
+%
 % Version 1.0.2
 % February 20, 2023
 % - MATLAB-Version dependence found in obj = CombPO(obj) was fixed.
@@ -2541,8 +2547,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
             if isa(obj2,'double') && numel(obj2) == 1
                 if mod(obj2,1) == 0
                     if obj2 == 0
-                        obj1.coef = sym(zeros(size(obj1.coef)));
-                        obj = CombPO(obj1);
+                        obj = PO(size(obj1.axis,2),{'1'});
                     elseif obj2 > 0
                         for ii = 1:obj2
                             if ii == 1
