@@ -34,6 +34,10 @@
 %
 %
 % Revision Information
+% Version 1.0.4
+% May 1, 2023
+% - jc1() is modfied so that the printout shows a correct spin-pair.
+%
 % Version 1.0.3
 % April 28, 2023
 % - Misdefining of I^0 in obj = mpower(obj1, obj2) was fixed.
@@ -1514,7 +1518,7 @@ classdef (InferiorClasses = {?sym}) PO < matlab.mixin.CustomDisplay
                 for ii = 1:2
                     id_tmp = sp(ii);
                     axis_tmp(id_tmp) = 3;%Z direction
-                    sp_tmp = [sp_tmp spin_label_cell{ii}];
+                    sp_tmp = [sp_tmp spin_label_cell{id_tmp}];
                 end
                 id_sp = sp;
             elseif isa(sp,'char')
